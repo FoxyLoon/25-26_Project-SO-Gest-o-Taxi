@@ -20,11 +20,19 @@
 // FIle Descriptors (FD_SET, FD_ZERO, FD_ISSET, FD_CLR, FD_OK,...)
 #include <sys/select.h>
 
-#define TAM_COMANDO_CLIENTE 100
+#define NVEICULOS 10
+
+#define TAM 100
 #define SRV_FIFO "controlador"
 #define CLI_FIFO "cli_%d"
 
 typedef struct {
-    char str[TAM_COMANDO_CLIENTE];
+    
+    
+    char str[TAM];
     int pid;
 } PEDIDO_CLIENTE;
+
+typedef struct {
+    char str[TAM];
+} RESPOSTA_SERVER;
