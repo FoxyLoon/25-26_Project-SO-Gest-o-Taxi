@@ -40,9 +40,10 @@ int main(int argc, char *argv[]) {
         // Envia informações do veiculo para o cliente a informar que entrou, andou e chegou ao destino
         // ATENÇÃO QUE O VEICULO.C TEM QUE ESTAR ENVOLVIDO!
         read(fd, &pc, sizeof(PEDIDO_CLIENTE));
+        printf("Comando: %s\n", pc.comando);
 
         
-    } while (!(strcmp(pc.comando, "fim") == 0 || strcmp(pc.comando, "sair") == 0));
+    } while (!(strcmp(pc.comando, "TERMINAR") == 0));
 
     close(fd);
     unlink(SRV_FIFO);

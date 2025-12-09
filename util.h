@@ -25,7 +25,7 @@
 #define TAM 100
 #define TAM_USERNAME 30
 
-#define SRV_FIFO "controlador"
+#define SRV_FIFO "canal_controlador"
 #define CLI_FIFO "cli_%d"
 
 typedef struct {
