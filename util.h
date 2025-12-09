@@ -23,16 +23,21 @@
 #define NVEICULOS 10
 
 #define TAM 100
+#define TAM_USERNAME 30
+
 #define SRV_FIFO "controlador"
 #define CLI_FIFO "cli_%d"
 
 typedef struct {
-    
-    
-    char str[TAM];
-    int pid;
+    int id;
+    char comando[TAM];
+    char username[TAM_USERNAME];
+    int hora;
+    char origem[TAM];
+    int distancia;
+    char destino[TAM];
 } PEDIDO_CLIENTE;
 
 typedef struct {
-    char str[TAM];
+    char msg[TAM];
 } RESPOSTA_SERVER;

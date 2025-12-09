@@ -42,7 +42,7 @@ int main(int argc, char *argv[]) {
         read(fd, &pc, sizeof(PEDIDO_CLIENTE));
 
         
-    } while (!(strcmp(pc.str, "fim") == 0 || strcmp(pc.str, "sair") == 0));
+    } while (!(strcmp(pc.comando, "fim") == 0 || strcmp(pc.comando, "sair") == 0));
 
     close(fd);
     unlink(SRV_FIFO);

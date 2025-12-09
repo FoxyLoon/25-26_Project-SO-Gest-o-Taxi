@@ -5,8 +5,12 @@
 #include "util.h"
 
 int main(int argc, char *argv[]) {
-    int fd, fd_cli;
+    if (argc < 2) {
+        printf("[Falha ao iniciar] Uso correto: ./cliente <username>\n");
+        exit(1);
+    }
 
+    int fd, fd_cli;
     char str[20]; 
     PEDIDO_CLIENTE pc;
 
@@ -17,9 +21,6 @@ int main(int argc, char *argv[]) {
         exit(3);
     };
 
-    // TODO: Necessário identificar o cliente com username
-    // Necessario verificar se user foi aceite (se há espaço ou não há repetido)
-
 
     // Se sim, abre o FIFO do controlador
     fd = open(SRV_FIFO, O_WRONLY);
@@ -29,11 +30,20 @@ int main(int argc, char *argv[]) {
         exit(3);
     }
 
+    printf("Registo Inicial:\n");
+
+    // Inicio de sessão + guarda nome na estrutura
+    strcpy(pc.username, argv[1]);
+    printf("Username: %s\n", pc.username);
+
     // Cria o FIFO do cliente
-    pc.pid = getpid();
-    sprintf(str, CLI_FIFO, pc.pid);
+    pc.id = getpid();
+    printf("ID: %d\n", pc.id);
+
+    sprintf(str, CLI_FIFO, pc.id);
     mkfifo(str, 0640);
     fd_cli = open(str, O_RDWR);
+    
 
     //AÇÕES DO CLIENTE
     // AGENDAR <HORA> <LOCAL ORIGEM> <DISTANCIA>
@@ -51,7 +61,7 @@ int main(int argc, char *argv[]) {
             // Assim que veiculo chegar, indica local de destino
                 // Não pode cancelar quando veiculo chegar
 
-    } while (!(strcmp(pc.str, "fim") == 0 || strcmp(pc.str, "sair") == 0));
+    } while (!(strcmp(pc.comando, "fim") == 0 || strcmp(pc.comando, "sair") == 0));
 
     close(fd_cli);
     unlink(str);
