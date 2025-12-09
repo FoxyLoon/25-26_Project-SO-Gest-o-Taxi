@@ -92,7 +92,6 @@ int main(int argc, char *argv[])
         FD_ZERO(&fds);
         FD_SET(0, &fds);      // teclado
         FD_SET(fd_cli, &fds); // fifo (fd_cli)
-        fflush(stdout);
         printf("CMD >> ");
 
         int max_fd = fd_cli > 0 ? fd_cli : 0;
@@ -101,8 +100,9 @@ int main(int argc, char *argv[])
         {
             if (FD_ISSET(0, &fds))
             {
-                fflush(stdin);
                 
+                fflush(stdout);
+                fflush(stdin);
 
                 char buffer[128];
 
@@ -245,7 +245,7 @@ int main(int argc, char *argv[])
                 printf(" %s\n", rs.msg);
             }
         }
-
+        
     } while (strcmp(pc.comando, "terminar") != 0);
 
     close(fd_cli);

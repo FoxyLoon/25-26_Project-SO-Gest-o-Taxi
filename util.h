@@ -24,7 +24,7 @@
 
 // Definicoes
 #define NVEICULOS 10
-#define NCLIENTES 30
+#define NCLIENTES 1
 
 // =====================================
 
