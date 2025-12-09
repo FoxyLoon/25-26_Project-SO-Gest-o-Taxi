@@ -79,11 +79,6 @@ int main(int argc, char *argv[])
             {
                 if (clientes[i] != -1)
                 {
-                    // No str_pid coloca o PID do utilizador formatado
-                    sprintf(str_pid, CLI_FIFO, clientes[i]);
-                    // Abre o FIFO especifico do cliente
-                    fd_cli = open(str_pid, O_WRONLY);
-
                     // Verifica comando executado
                     if (strcmp(pc.comando, "agendar") == 0)
                     {
@@ -93,36 +88,54 @@ int main(int argc, char *argv[])
                         printf("Distancia Recebida: %d\n", pc.distancia);
 
                         // Envia a resposta ao cliente
-                        // sprintf(rs.msg, "[SERVIDOR] AGENDAMENTO RECEBIDO");
-                        // write(fd_cli, &rs, sizeof(RESPOSTA_SERVER));
+                        snprintf(rs.msg, sizeof(rs.msg), "[SERVIDOR] AGENDAMENTO RECEBIDO");
                     }
-                    else if (strcmp(pc.comando, "consultar") == 0)
+                    if (strcmp(pc.comando, "consultar") == 0)
                     {
                         printf("Comando Recebido: %s\n", pc.comando);
 
                         // Envia a resposta ao cliente
-                        // sprintf(rs.msg, "[SERVIDOR] CONSULTA RECEBIDA");
-                        // write(fd_cli, &rs, sizeof(RESPOSTA_SERVER));
+                        snprintf(rs.msg, sizeof(rs.msg), "[SERVIDOR] CONSULTA RECEBIDA");
                     }
-                    else if (strcmp(pc.comando, "cancelar") == 0)
+                    if (strcmp(pc.comando, "cancelar") == 0)
                     {
                         printf("Comando Recebido: %s\n", pc.comando);
                         printf("ID Recebido: %d\n", pc.id_servico);
 
                         // Envia a resposta ao cliente
-                        // sprintf(rs.msg, "[SERVIDOR] CANCELAMENTO RECEBIDO");
-                        // write(fd_cli, &rs, sizeof(RESPOSTA_SERVER));
+                        snprintf(rs.msg, sizeof(rs.msg), "[SERVIDOR] CANCELAMENTO RECEBIDO");
                     }
                     // Será removido porque o cliente não é suposto terminar o servidor
                     // Apenas está para fins de teste!
-                    else if (strcmp(pc.comando, "terminar") == 0)
+                    if (strcmp(pc.comando, "terminar") == 0)
                     {
                         printf("Comando Recebido: %s\n", pc.comando);
 
                         // Envia a resposta ao cliente
-                        // sprintf(rs.msg, "[SERVIDOR] TERMINAR RECEBIDO");
-                        // write(fd_cli, &rs, sizeof(RESPOSTA_SERVER));
+                        snprintf(rs.msg, sizeof(rs.msg), "[SERVIDOR] TERMINAR RECEBIDO");                        
                     }
+
+                }
+            }
+
+
+            // Envia comando 
+            for (i = 0; i < NCLIENTES; i++)
+            {
+                if (clientes[i] != -1)
+                {
+                    // No str_pid coloca o PID do utilizador formatado
+                    sprintf(str_pid, CLI_FIFO, clientes[i]);
+                    // Abre o FIFO especifico do cliente
+                    fd_cli = open(str_pid, O_WRONLY);
+                    
+                    if (fd_cli < 0)
+                    {
+                        printf("Erro ao abrir o FIFO 'controlador'");
+                        continue;
+                    }
+                    n = write(fd_cli, &rs, sizeof(RESPOSTA_SERVER));
+                    printf("Comando Enviado: %s\n", rs.msg);
 
                     // Fecha o FIFO do cliente
                     close(fd_cli);
@@ -133,11 +146,11 @@ int main(int argc, char *argv[])
         // =====================================
 
         // Mostra os utilizadores ativos
-        printf("\nUTILIZADORES ATIVOS:\n");
-        for (i = 0; i < NCLIENTES; i++)
-        {
-            printf("CLIENTES[%d] = %d\n", i, clientes[i]);
-        }
+        // printf("\nUTILIZADORES ATIVOS:\n");
+        // for (i = 0; i < NCLIENTES; i++)
+        // {
+        //     printf("CLIENTES[%d] = %d\n", i, clientes[i]);
+        // }
     } while (strcmp(pc.comando, "terminar") != 0);
 
     close(fd);

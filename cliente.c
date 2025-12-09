@@ -32,16 +32,28 @@ int main(int argc, char *argv[])
 
     // =====================================
 
+    // Definicoes de estruturas
     PEDIDO_CLIENTE pc;
     RESPOSTA_SERVER rs;
 
+    // =====================================
+
+    int n, fd, fd_cli;
+
+    // Usado para verificar quando deve ler ou escrever
+    fd_set fds;
+    int res;
+
+    // Usado para gerir pids dos clientes no FIFOs
     char str_pid[20];
+
+    // =====================================
 
     // Preenche o username do utilizador
     strcpy(pc.username, argv[1]);
 
     // Abre o FIFO do controlador
-    int fd = open(SRV_FIFO, O_WRONLY);
+    fd = open(SRV_FIFO, O_WRONLY);
     if (fd == -1)
     {
         printf("Erro ao abrir o FIFO 'controlador'");
@@ -52,7 +64,7 @@ int main(int argc, char *argv[])
     pc.pid = getpid();
     sprintf(str_pid, CLI_FIFO, pc.pid);
     mkfifo(str_pid, 0640);
-    int fd_cli = open(str_pid, O_RDWR);
+    fd_cli = open(str_pid, O_RDWR);
 
     // =====================================
 
@@ -70,196 +82,221 @@ int main(int argc, char *argv[])
     // Validação de Input
     do
     {
-        char buffer[256];
+        
+        FD_ZERO(&fds);
+        FD_SET(0, &fds);      // teclado
+        FD_SET(fd_cli, &fds); // fifo (fd_cli)
+        int max_fd = fd_cli > 0 ? fd_cli : 0;
 
-        // Input do Utilizador
-        printf("> ");
-        if (!fgets(buffer, sizeof(buffer), stdin))
+        // Nao sei porque raio para aqui
+        res = select(fd_cli + 1, &fds, NULL, NULL, NULL); 
+        if (res > 0)
         {
-            printf("Erro ao ler input.\n");
-            continue;
-        }
-
-        // =====================================
-
-        // Remove o \0 e \n
-        buffer[strcspn(buffer, "\n")] = '\0';
-
-        // Extrai o primeiro termo do buffer
-        char *cmd = strtok(buffer, " ");
-
-        // Verifica se o está NULL/VAZIO
-        if (cmd == NULL)
-        {
-            printf("Comando vazio.\n");
-            continue;
-        }
-
-        // =====================================
-
-        else if (strcmp(cmd, "agendar") == 0)
-        {
-
-            char *hora = strtok(NULL, " ");
-            char *origem = strtok(NULL, " ");
-            char *dist = strtok(NULL, " ");
-            char *extra = strtok(NULL, " ");
-
-            if (!hora || !origem || !dist || extra != NULL)
+            if (FD_ISSET(0, &fds))
             {
-                printf("Uso correto: agendar <hora> <origem> <distancia>\n");
-                continue;
+                char buffer[128];
+                printf("> ");
+                // Input do Utilizador
+                if (!fgets(buffer, sizeof(buffer), stdin))
+                {
+                    printf("Erro ao ler input.\n");
+                    continue;
+                }
+
+                // =====================================
+
+                buffer[strcspn(buffer, "\n")] = '\0';
+
+                // Extrai o primeiro termo do buffer
+                char *cmd = strtok(buffer, " ");
+
+                // Verifica se o está NULL/VAZIO
+                if (cmd == NULL)
+                {
+                    printf("Comando vazio.\n");
+                    continue;
+                }
+
+                // =====================================
+
+                if (strcmp(cmd, "agendar") == 0)
+                {
+
+                    char *hora = strtok(NULL, " ");
+                    char *origem = strtok(NULL, " ");
+                    char *dist = strtok(NULL, " ");
+                    char *extra = strtok(NULL, " ");
+
+                    if (!hora || !origem || !dist || extra != NULL)
+                    {
+                        printf("Uso correto: agendar <hora> <origem> <distancia>\n");
+                        continue;
+                    }
+
+                    if (!isNumber(hora))
+                    {
+                        printf("[ERRO] hora deve ser numérica.\n");
+                        continue;
+                    }
+                    if (!isNumber(dist))
+                    {
+                        printf("[ERRO] distancia deve ser numérica.\n");
+                        continue;
+                    }
+
+                    printf("Comando válido: agendar | Hora = %s | Origem = %s | Distancia = %s\n", hora, origem, dist);
+
+                    strcpy(pc.comando, cmd);
+                    pc.hora = atoi(hora);
+                    strcpy(pc.origem, origem);
+                    pc.distancia = atoi(dist);
+
+                    // Enviar pedido ao controlador
+                    if (write(fd, &pc, sizeof(PEDIDO_CLIENTE)) == -1)
+                    {
+                        printf("[ERRO] Falha ao escrever no FIFO 'controlador'");
+                        return 1;
+                    };
+                    printf("Enviei pedido '%s' ao controlador\n", pc.comando);
+
+                    // Receber resposta do controlador
+                    // if (read(fd_cli, &rs, sizeof(RESPOSTA_SERVER)) == -1)
+                    // {
+                    //     printf("[ERRO] Falha ao ler do FIFO 'controlador'");
+                    //     return 1;
+                    // };
+                    // printf("%s\n", rs.msg);
+
+                    continue;
+                }
+
+                // =====================================
+
+                else if (strcmp(cmd, "consultar") == 0)
+                {
+
+                    char *extra = strtok(NULL, " ");
+                    if (extra != NULL)
+                    {
+                        printf("[ERRO] 'consultar' não aceita argumentos.\n");
+                        continue;
+                    }
+
+                    printf("Comando válido: consultar\n");
+                    strcpy(pc.comando, cmd);
+
+                    // Enviar pedido ao controlador
+                    if (write(fd, &pc, sizeof(PEDIDO_CLIENTE)) == -1)
+                    {
+                        printf("[ERRO] Falha ao escrever no FIFO 'controlador'");
+                        return 1;
+                    };
+                    printf("Enviei pedido '%s' ao controlador\n", pc.comando);
+
+                    // Receber resposta do controlador
+                    // if (read(fd_cli, &rs, sizeof(RESPOSTA_SERVER)) == -1)
+                    // {
+                    //     printf("[ERRO] Falha ao ler do FIFO 'controlador'");
+                    //     return 1;
+                    // };
+                    // printf("%s\n", rs.msg);
+
+                    continue;
+                }
+
+                // =====================================
+
+                else if (strcmp(cmd, "cancelar") == 0)
+                {
+
+                    char *id_servico = strtok(NULL, " ");
+                    char *extra = strtok(NULL, " ");
+
+                    if (id_servico == NULL || extra != NULL)
+                    {
+                        printf("Uso correto: cancelar <id>\n");
+                        continue;
+                    }
+
+                    if (!isNumber(id_servico))
+                    {
+                        printf("[ERRO] id deve ser numérico.\n");
+                        continue;
+                    }
+
+                    printf("Comando válido: cancelar id=%s\n", id_servico);
+                    strcpy(pc.comando, cmd);
+                    pc.id_servico = atoi(id_servico);
+
+                    // Enviar pedido ao controlador
+                    if (write(fd, &pc, sizeof(PEDIDO_CLIENTE)) == -1)
+                    {
+                        printf("[ERRO] Falha ao escrever no FIFO 'controlador'");
+                        return 1;
+                    };
+                    printf("Enviei pedido '%s' ao controlador\n", pc.comando);
+
+                    // Receber resposta do controlador
+                    // if (read(fd_cli, &rs, sizeof(RESPOSTA_SERVER)) == -1)
+                    // {
+                    //     printf("[ERRO] Falha ao ler do FIFO 'controlador'");
+                    //     return 1;
+                    // };
+                    // printf("%s\n", rs.msg);
+
+                    continue;
+                }
+
+                // =====================================
+
+                else if (strcmp(cmd, "terminar") == 0)
+                {
+
+                    char *extra = strtok(NULL, " ");
+                    if (extra != NULL)
+                    {
+                        printf("[ERRO] 'terminar' não aceita argumentos.\n");
+                        continue;
+                    };
+
+                    strcpy(pc.comando, cmd);
+
+                    // Enviar pedido ao controlador
+                    if (write(fd, &pc, sizeof(PEDIDO_CLIENTE)) == -1)
+                    {
+                        printf("[ERRO] Falha ao escrever no FIFO 'controlador'");
+                        return 1;
+                    };
+                    printf("Enviei pedido '%s' ao controlador\n", pc.comando);
+
+                    // Receber resposta do controlador
+                    // if (read(fd_cli, &rs, sizeof(RESPOSTA_SERVER)) == -1)
+                    // {
+                    //     printf("[ERRO] Falha ao ler do FIFO 'controlador'");
+                    //     return 1;
+                    // };
+                    // printf("%s\n", rs.msg);
+
+                    printf("A terminar...\n");
+                }
+
+                // =====================================
+
+                else
+                {
+                    printf("Comando inválido: %s\n", cmd);
+                    continue;
+                }
             }
-
-            if (!isNumber(hora))
+            if (FD_ISSET(fd_cli, &fds))
             {
-                printf("[ERRO] hora deve ser numérica.\n");
-                continue;
+                if (read(fd_cli, &rs, sizeof(RESPOSTA_SERVER)) == -1)
+                {
+                    printf("[ERRO] Falha ao ler do FIFO 'controlador'");
+                    return 1;
+                };
+                printf(" %s\n", rs.msg);
             }
-            if (!isNumber(dist))
-            {
-                printf("[ERRO] distancia deve ser numérica.\n");
-                continue;
-            }
-
-            printf("Comando válido: agendar | Hora = %s | Origem = %s | Distancia = %s\n", hora, origem, dist);
-
-            strcpy(pc.comando, cmd);
-            pc.hora = atoi(hora);
-            strcpy(pc.origem, origem);
-            pc.distancia = atoi(dist);
-
-            // Enviar pedido ao controlador
-            if (write(fd, &pc, sizeof(PEDIDO_CLIENTE)) == -1)
-            {
-                printf("[ERRO] Falha ao escrever no FIFO 'controlador'");
-                return 1;
-            };
-
-
-            // Receber resposta do controlador
-            // if (read(fd_cli, &rs, sizeof(RESPOSTA_SERVER)) == -1)
-            // {
-            //     printf("[ERRO] Falha ao ler do FIFO 'controlador'");
-            //     return 1;
-            // };
-            // printf("Resposta: %s\n", rs.msg);
-
-            continue;
-        }
-
-        // =====================================
-
-        else if (strcmp(cmd, "consultar") == 0)
-        {
-
-            char *extra = strtok(NULL, " ");
-            if (extra != NULL)
-            {
-                printf("[ERRO] 'consultar' não aceita argumentos.\n");
-                continue;
-            }
-
-            printf("Comando válido: consultar\n");
-            strcpy(pc.comando, cmd);
-
-            // Enviar pedido ao controlador
-            if (write(fd, &pc, sizeof(PEDIDO_CLIENTE)) == -1)
-            {
-                printf("[ERRO] Falha ao escrever no FIFO 'controlador'");
-                return 1;
-            };
-
-            // Receber resposta do controlador
-            // if (read(fd_cli, &rs, sizeof(RESPOSTA_SERVER)) == -1)
-            // {
-            //     printf("[ERRO] Falha ao ler do FIFO 'controlador'");
-            //     return 1;
-            // };
-            // printf("Resposta: %s\n", rs.msg);
-
-            continue;
-        }
-
-        // =====================================
-
-        else if (strcmp(cmd, "cancelar") == 0)
-        {
-
-            char *id_servico = strtok(NULL, " ");
-            char *extra = strtok(NULL, " ");
-
-            if (id_servico == NULL || extra != NULL)
-            {
-                printf("Uso correto: cancelar <id>\n");
-                continue;
-            }
-
-            if (!isNumber(id_servico))
-            {
-                printf("[ERRO] id deve ser numérico.\n");
-                continue;
-            }
-
-            printf("Comando válido: cancelar id=%s\n", id_servico);
-            strcpy(pc.comando, cmd);
-            pc.id_servico = atoi(id_servico);
-
-            // Enviar pedido ao controlador
-            if (write(fd, &pc, sizeof(PEDIDO_CLIENTE)) == -1)
-            {
-                printf("[ERRO] Falha ao escrever no FIFO 'controlador'");
-                return 1;
-            };
-
-            // Receber resposta do controlador
-            // if (read(fd_cli, &rs, sizeof(RESPOSTA_SERVER)) == -1)
-            // {
-            //     printf("[ERRO] Falha ao ler do FIFO 'controlador'");
-            //     return 1;
-            // };
-            // printf("Resposta: %s\n", rs.msg);
-
-            continue;
-        }
-
-        // =====================================
-
-        else if (strcmp(cmd, "terminar") == 0)
-        {
-
-            char *extra = strtok(NULL, " ");
-            if (extra != NULL)
-            {
-                printf("[ERRO] 'terminar' não aceita argumentos.\n");
-                continue;
-            }
-
-            strcpy(pc.comando, cmd);
-
-            // Enviar pedido ao controlador
-            if (write(fd, &pc, sizeof(PEDIDO_CLIENTE)) == -1)
-            {
-                printf("[ERRO] Falha ao escrever no FIFO 'controlador'");
-                return 1;
-            };
-
-            // Receber resposta do controlador
-            // if (read(fd_cli, &rs, sizeof(RESPOSTA_SERVER)) == -1)
-            // {
-            //     printf("[ERRO] Falha ao ler do FIFO 'controlador'");
-            //     return 1;
-            // };
-            // printf("Resposta: %s\n", rs.msg);
-            printf("A terminar...\n");
-        }
-
-        // =====================================
-
-        else
-        {
-            printf("Comando inválido: %s\n", cmd);
-            continue;
         }
 
     } while (strcmp(pc.comando, "terminar") != 0);
@@ -269,5 +306,4 @@ int main(int argc, char *argv[])
     close(fd);
 
     exit(0);
-
 }
