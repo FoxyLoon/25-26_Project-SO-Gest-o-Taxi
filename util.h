@@ -25,11 +25,12 @@
 #define TAM 100
 #define TAM_USERNAME 30
 
-#define SRV_FIFO "canal_controlador"
+#define SRV_FIFO "canal"
 #define CLI_FIFO "cli_%d"
 
 typedef struct {
-    int id;
+    int pid;
+    int id_servico;
     char comando[TAM];
     char username[TAM_USERNAME];
     int hora;
@@ -41,3 +42,10 @@ typedef struct {
 typedef struct {
     char msg[TAM];
 } RESPOSTA_SERVER;
+
+// Verifica se o char s é um número
+int isNumber(const char *s) {
+    for (int i = 0; s[i]; i++)
+        if (!isdigit((unsigned char)s[i])) return 0;
+    return 1;
+}
