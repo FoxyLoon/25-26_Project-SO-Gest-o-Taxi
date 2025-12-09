@@ -16,6 +16,7 @@
 int main(int argc, char *argv[])
 {
     // Check Inicial ao iniciar o CLiente
+    setbuf(stdout, NULL);
 
     if (argc < 2)
     {
@@ -64,7 +65,12 @@ int main(int argc, char *argv[])
     pc.pid = getpid();
     sprintf(str_pid, CLI_FIFO, pc.pid);
     mkfifo(str_pid, 0640);
-    fd_cli = open(str_pid, O_RDWR);
+    fd_cli = open(str_pid, O_RDWR | O_NONBLOCK);
+    if (fd_cli == -1)
+    {
+        printf("Erro ao abrir o FIFO 'cli_%d'", pc.pid);
+        return 1;
+    }
 
     // =====================================
 
@@ -86,18 +92,21 @@ int main(int argc, char *argv[])
         FD_ZERO(&fds);
         FD_SET(0, &fds);      // teclado
         FD_SET(fd_cli, &fds); // fifo (fd_cli)
-        int max_fd = fd_cli > 0 ? fd_cli : 0;
+        fflush(stdout);
+        printf("CMD >> ");
 
-        // Nao sei porque raio para aqui
+        int max_fd = fd_cli > 0 ? fd_cli : 0;
         res = select(fd_cli + 1, &fds, NULL, NULL, NULL);
         if (res > 0)
         {
             if (FD_ISSET(0, &fds))
             {
-                char buffer[128];
+                fflush(stdin);
                 
+
+                char buffer[128];
+
                 // Input do Utilizador
-                printf("> ");
                 if (!fgets(buffer, sizeof(buffer), stdin))
                 {
                     printf("Erro ao ler input.\n");

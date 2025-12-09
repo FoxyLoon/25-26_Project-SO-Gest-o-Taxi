@@ -77,7 +77,7 @@ int main(int argc, char *argv[])
 
             for (i = 0; i < NCLIENTES; i++)
             {
-                if (clientes[i] != -1)
+                if (clientes[i] == pc.pid)
                 {
                     // No str_pid coloca o PID do utilizador formatado
                     sprintf(str_pid, CLI_FIFO, clientes[i]);
