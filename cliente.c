@@ -82,21 +82,22 @@ int main(int argc, char *argv[])
     // Validação de Input
     do
     {
-        
+
         FD_ZERO(&fds);
         FD_SET(0, &fds);      // teclado
         FD_SET(fd_cli, &fds); // fifo (fd_cli)
         int max_fd = fd_cli > 0 ? fd_cli : 0;
 
         // Nao sei porque raio para aqui
-        res = select(fd_cli + 1, &fds, NULL, NULL, NULL); 
+        res = select(fd_cli + 1, &fds, NULL, NULL, NULL);
         if (res > 0)
         {
             if (FD_ISSET(0, &fds))
             {
                 char buffer[128];
-                printf("> ");
+                
                 // Input do Utilizador
+                printf("> ");
                 if (!fgets(buffer, sizeof(buffer), stdin))
                 {
                     printf("Erro ao ler input.\n");
@@ -150,31 +151,12 @@ int main(int argc, char *argv[])
                     pc.hora = atoi(hora);
                     strcpy(pc.origem, origem);
                     pc.distancia = atoi(dist);
-
-                    // Enviar pedido ao controlador
-                    if (write(fd, &pc, sizeof(PEDIDO_CLIENTE)) == -1)
-                    {
-                        printf("[ERRO] Falha ao escrever no FIFO 'controlador'");
-                        return 1;
-                    };
-                    printf("Enviei pedido '%s' ao controlador\n", pc.comando);
-
-                    // Receber resposta do controlador
-                    // if (read(fd_cli, &rs, sizeof(RESPOSTA_SERVER)) == -1)
-                    // {
-                    //     printf("[ERRO] Falha ao ler do FIFO 'controlador'");
-                    //     return 1;
-                    // };
-                    // printf("%s\n", rs.msg);
-
-                    continue;
                 }
 
                 // =====================================
 
                 else if (strcmp(cmd, "consultar") == 0)
                 {
-
                     char *extra = strtok(NULL, " ");
                     if (extra != NULL)
                     {
@@ -184,24 +166,6 @@ int main(int argc, char *argv[])
 
                     printf("Comando válido: consultar\n");
                     strcpy(pc.comando, cmd);
-
-                    // Enviar pedido ao controlador
-                    if (write(fd, &pc, sizeof(PEDIDO_CLIENTE)) == -1)
-                    {
-                        printf("[ERRO] Falha ao escrever no FIFO 'controlador'");
-                        return 1;
-                    };
-                    printf("Enviei pedido '%s' ao controlador\n", pc.comando);
-
-                    // Receber resposta do controlador
-                    // if (read(fd_cli, &rs, sizeof(RESPOSTA_SERVER)) == -1)
-                    // {
-                    //     printf("[ERRO] Falha ao ler do FIFO 'controlador'");
-                    //     return 1;
-                    // };
-                    // printf("%s\n", rs.msg);
-
-                    continue;
                 }
 
                 // =====================================
@@ -227,24 +191,6 @@ int main(int argc, char *argv[])
                     printf("Comando válido: cancelar id=%s\n", id_servico);
                     strcpy(pc.comando, cmd);
                     pc.id_servico = atoi(id_servico);
-
-                    // Enviar pedido ao controlador
-                    if (write(fd, &pc, sizeof(PEDIDO_CLIENTE)) == -1)
-                    {
-                        printf("[ERRO] Falha ao escrever no FIFO 'controlador'");
-                        return 1;
-                    };
-                    printf("Enviei pedido '%s' ao controlador\n", pc.comando);
-
-                    // Receber resposta do controlador
-                    // if (read(fd_cli, &rs, sizeof(RESPOSTA_SERVER)) == -1)
-                    // {
-                    //     printf("[ERRO] Falha ao ler do FIFO 'controlador'");
-                    //     return 1;
-                    // };
-                    // printf("%s\n", rs.msg);
-
-                    continue;
                 }
 
                 // =====================================
@@ -261,22 +207,6 @@ int main(int argc, char *argv[])
 
                     strcpy(pc.comando, cmd);
 
-                    // Enviar pedido ao controlador
-                    if (write(fd, &pc, sizeof(PEDIDO_CLIENTE)) == -1)
-                    {
-                        printf("[ERRO] Falha ao escrever no FIFO 'controlador'");
-                        return 1;
-                    };
-                    printf("Enviei pedido '%s' ao controlador\n", pc.comando);
-
-                    // Receber resposta do controlador
-                    // if (read(fd_cli, &rs, sizeof(RESPOSTA_SERVER)) == -1)
-                    // {
-                    //     printf("[ERRO] Falha ao ler do FIFO 'controlador'");
-                    //     return 1;
-                    // };
-                    // printf("%s\n", rs.msg);
-
                     printf("A terminar...\n");
                 }
 
@@ -287,12 +217,20 @@ int main(int argc, char *argv[])
                     printf("Comando inválido: %s\n", cmd);
                     continue;
                 }
+
+                // Enviar pedido ao controlador
+                if (write(fd, &pc, sizeof(PEDIDO_CLIENTE)) == -1)
+                {
+                    printf("[ERRO] Falha ao escrever no FIFO 'canal'");
+                    return 1;
+                };
+                printf("Enviei pedido '%s' ao controlador\n", pc.comando);
             }
             if (FD_ISSET(fd_cli, &fds))
             {
                 if (read(fd_cli, &rs, sizeof(RESPOSTA_SERVER)) == -1)
                 {
-                    printf("[ERRO] Falha ao ler do FIFO 'controlador'");
+                    printf("[ERRO] Falha ao ler 'canal'");
                     return 1;
                 };
                 printf(" %s\n", rs.msg);

@@ -79,6 +79,16 @@ int main(int argc, char *argv[])
             {
                 if (clientes[i] != -1)
                 {
+                    // No str_pid coloca o PID do utilizador formatado
+                    sprintf(str_pid, CLI_FIFO, clientes[i]);
+                    // Abre o FIFO especifico do cliente
+                    fd_cli = open(str_pid, O_WRONLY);
+                    if (fd_cli < 0)
+                    {
+                        printf("Erro ao abrir o FIFO 'controlador'");
+                        continue;
+                    }
+
                     // Verifica comando executado
                     if (strcmp(pc.comando, "agendar") == 0)
                     {
@@ -112,28 +122,9 @@ int main(int argc, char *argv[])
                         printf("Comando Recebido: %s\n", pc.comando);
 
                         // Envia a resposta ao cliente
-                        snprintf(rs.msg, sizeof(rs.msg), "[SERVIDOR] TERMINAR RECEBIDO");                        
+                        snprintf(rs.msg, sizeof(rs.msg), "[SERVIDOR] TERMINAR RECEBIDO");
                     }
 
-                }
-            }
-
-
-            // Envia comando 
-            for (i = 0; i < NCLIENTES; i++)
-            {
-                if (clientes[i] != -1)
-                {
-                    // No str_pid coloca o PID do utilizador formatado
-                    sprintf(str_pid, CLI_FIFO, clientes[i]);
-                    // Abre o FIFO especifico do cliente
-                    fd_cli = open(str_pid, O_WRONLY);
-                    
-                    if (fd_cli < 0)
-                    {
-                        printf("Erro ao abrir o FIFO 'controlador'");
-                        continue;
-                    }
                     n = write(fd_cli, &rs, sizeof(RESPOSTA_SERVER));
                     printf("Comando Enviado: %s\n", rs.msg);
 

@@ -1,4 +1,4 @@
-# Compilar rapidamente os 3 executaveis
+kn# Compilar rapidamente os 3 executaveis
 
 unlink cli_*
 unlink canal
