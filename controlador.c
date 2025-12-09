@@ -34,6 +34,8 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
+    printf("O 'controlador' está a funcionar!\n");
+
     do {
         if (read(fd, &pc, sizeof(PEDIDO_CLIENTE)) == -1) {
             printf("Erro ao ler do FIFO 'controlador'");
