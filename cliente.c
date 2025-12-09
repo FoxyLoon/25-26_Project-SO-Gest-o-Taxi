@@ -93,11 +93,11 @@ int main(int argc, char *argv[])
             }
 
             if (!isNumber(hora)) {
-                printf("Erro: hora deve ser numérica.\n");
+                printf("[ERRO] hora deve ser numérica.\n");
                 continue;
             }
             if (!isNumber(dist)) {
-                printf("Erro: distancia deve ser numérica.\n");
+                printf("[ERRO] distancia deve ser numérica.\n");
                 continue;
             }
 
@@ -121,7 +121,7 @@ int main(int argc, char *argv[])
 
             char *extra = strtok(NULL, " ");
             if (extra != NULL) {
-                printf("Erro: 'consultar' não aceita argumentos.\n");
+                printf("[ERRO] 'consultar' não aceita argumentos.\n");
                 continue;
             }
 
@@ -148,7 +148,7 @@ int main(int argc, char *argv[])
             }
 
             if (!isNumber(id_servico)) {
-                printf("Erro: id deve ser numérico.\n");
+                printf("[ERRO] id deve ser numérico.\n");
                 continue;
             }
 
@@ -169,7 +169,7 @@ int main(int argc, char *argv[])
 
             char *extra = strtok(NULL, " ");
             if (extra != NULL) {
-                printf("Erro: 'terminar' não aceita argumentos.\n");
+                printf("[ERRO] 'terminar' não aceita argumentos.\n");
                 continue;
             }
 
