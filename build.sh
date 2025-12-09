@@ -2,4 +2,4 @@
 
 gcc cliente.c -o cliente
 gcc controlador.c -o controlador
-gcc veiculo.c -o veiculo
+# gcc veiculo.c -o veiculo

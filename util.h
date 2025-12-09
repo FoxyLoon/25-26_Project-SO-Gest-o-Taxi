@@ -20,14 +20,25 @@
 // FIle Descriptors (FD_SET, FD_ZERO, FD_ISSET, FD_CLR, FD_OK,...)
 #include <sys/select.h>
 
-#define NVEICULOS 10
+// =====================================
 
+// Definicoes
+#define NVEICULOS 10
+#define NCLIENTES 30
+
+// =====================================
+
+// Tamanhos de Strings (Não modificar)
 #define TAM 100
 #define TAM_USERNAME 30
 
+// FIFOs
 #define SRV_FIFO "canal"
 #define CLI_FIFO "cli_%d"
 
+// =====================================
+
+// Estruturas
 typedef struct {
     int pid;
     int id_servico;
@@ -42,6 +53,9 @@ typedef struct {
 typedef struct {
     char msg[TAM];
 } RESPOSTA_SERVER;
+
+// =====================================
+// Funções Globais
 
 // Verifica se o char s é um número
 int isNumber(const char *s) {
