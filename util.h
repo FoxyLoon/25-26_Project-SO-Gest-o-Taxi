@@ -26,6 +26,9 @@
 // Threads
 #include <pthread.h>
 
+// Sinais
+#include <signal.h>
+
 // =====================================
 
 // Definicoes
@@ -48,6 +51,8 @@
 int km_total = 0;
 int hora_simulada = 0;
 int servidor_ativo = 1;
+int CLIENTES_ATIVOS = 0;
+int SERVICOS_ATIVOS = 0;
 pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
 // =====================================
@@ -57,7 +62,8 @@ typedef struct
 {
     char username[TAM];
     int pid_cliente;
-} CLIENTES[NCLIENTES];
+} CLIENTE;
+
 
 typedef struct {
     int pid_cliente;
@@ -81,7 +87,13 @@ typedef struct {
     int hora;
     char origem[TAM];
     int distancia;
-} SERVICO[NSERVICOS];
+} SERVICO;
+
+// =====================================
+
+// Quantidades de Clientes e Servicos
+CLIENTE clientes[NCLIENTES];
+SERVICO servicos[NSERVICOS];
 
 // =====================================
 // Funções Globais

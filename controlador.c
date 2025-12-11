@@ -34,6 +34,37 @@ void *administrador()
     return NULL;
 }
 
+// Envia repostas ao respetivo cliente pelo pid do cliente
+void reposta_cliente(int pid_cli, char *mensagem) {
+    char fd_cli[20];
+    sprintf(fd_cli, CLI_FIFO, pid_cli);
+    int fd = open(fd_cli, O_WRONLY);
+    if (fd != -1)
+    {
+        RESPOSTA_SERVER rs;
+        strcpy(rs.msg, mensagem);
+        write(fd, &rs, sizeof(RESPOSTA_SERVER));
+        close(fd);
+    }
+}
+
+void terminar_servidor(int s)
+{
+    unlink(SRV_FIFO);
+    servidor_ativo = 0;
+    int i;
+    for (i = 0; i < SERVICOS_ATIVOS; i++)
+        if (servicos[i].status_servico == 1)
+            kill(servicos[i].pid_veiculo, SIGKILL);
+    for (i = 0; i < CLIENTES_ATIVOS; i++)
+        if (clientes[i].pid_cliente)
+            kill(clientes[i].pid_cliente, SIGUSR1);
+    printf("\n| ======================================== |\n");
+    printf("        [ O SERVIDOR FOI ENCERRADO ]        \n");
+    printf("| ======================================== |\n");
+    exit(0);
+}
+
 int main(int argc, char *argv[])
 {
     int n, i, fd, fd_cli, idx;
@@ -62,11 +93,11 @@ int main(int argc, char *argv[])
     // =====================================
 
     // Cria o array de utilizadores
-    int clientes[NCLIENTES];
+    /* int clientes[NCLIENTES];
     for (i = 0; i < NCLIENTES; i++)
     {
         clientes[i] = -1;
-    }
+    } */
 
     pthread_t thread_1, thread_2, thread_3;
     pthread_create(&thread_1, NULL, tempo, NULL);
@@ -80,6 +111,7 @@ int main(int argc, char *argv[])
     // =====================================
 
     // Fica à espera de pedidos
+    // TODO: PRECISA DE REFORMULAÇÃO!!!
     do
     {
         n = read(fd, &pc, sizeof(PEDIDO_CLIENTE));
@@ -96,7 +128,7 @@ int main(int argc, char *argv[])
             // =====================================
 
             // Verifica se existe espaço para o utilizador ou se ele ja existe
-            for (posicao_pid = -1, livre = -1, i = 0; i < NCLIENTES; i++)
+            /* for (posicao_pid = -1, livre = -1, i = 0; i < NCLIENTES; i++)
             {
                 // Verifica se o utilizador ja existe
                 if (clientes[i] == pc.pid_cliente)
@@ -127,7 +159,7 @@ int main(int argc, char *argv[])
             {
                 clientes[posicao_pid] = -1;
                 continue;
-            }
+            } */
 
             // =====================================
 
