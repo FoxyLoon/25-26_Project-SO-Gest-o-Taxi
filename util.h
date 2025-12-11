@@ -1,3 +1,6 @@
+#ifndef UTIL_H
+#define UTIL_H
+
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -20,39 +23,65 @@
 // FIle Descriptors (FD_SET, FD_ZERO, FD_ISSET, FD_CLR, FD_OK,...)
 #include <sys/select.h>
 
+// Threads
+#include <pthread.h>
+
 // =====================================
 
 // Definicoes
 #define NVEICULOS 10
-#define NCLIENTES 1
+#define NCLIENTES 30
+#define NSERVICOS 50
 
 // =====================================
 
 // Tamanhos de Strings (Não modificar)
 #define TAM 100
-#define TAM_USERNAME 30
+#define TAM_CMD 30
 
 // FIFOs
-#define SRV_FIFO "canal"
-#define CLI_FIFO "cli_%d"
+#define SRV_FIFO "fifo_servidor"
+#define CLI_FIFO "fifo_cliente_%d"
+
+// =====================================
+
+int km_total = 0;
+int hora_simulada = 0;
+int servidor_ativo = 1;
+pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
 // =====================================
 
 // Estruturas
+typedef struct 
+{
+    char username[TAM];
+    int pid_cliente;
+} CLIENTES[NCLIENTES];
+
 typedef struct {
-    int pid;
-    int id_servico;
-    char comando[TAM];
-    char username[TAM_USERNAME];
+    int pid_cliente;
+    char comando[TAM_CMD];
+    char username[TAM];
     int hora;
     char origem[TAM];
     int distancia;
-    char destino[TAM];
 } PEDIDO_CLIENTE;
 
 typedef struct {
     char msg[TAM];
 } RESPOSTA_SERVER;
+
+typedef struct {
+    int id_servico;
+    int status_servico;
+    int pid_cliente;
+    int pid_veiculo;
+    char username[TAM];
+    int hora;
+    char origem[TAM];
+    int distancia;
+} SERVICO[NSERVICOS];
 
 // =====================================
 // Funções Globais
@@ -63,3 +92,5 @@ int isNumber(const char *s) {
         if (!isdigit((unsigned char)s[i])) return 0;
     return 1;
 }
+
+#endif

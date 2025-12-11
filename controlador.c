@@ -16,6 +16,24 @@
 
 #include "util.h"
 
+void *tempo()
+{
+    printf("Ola thread1\n");
+    return NULL;
+}
+
+void *cliente()
+{
+    printf("Ola thread2\n");
+    return NULL;
+}
+
+void *administrador()
+{
+    printf("Ola thread3\n");
+    return NULL;
+}
+
 int main(int argc, char *argv[])
 {
     int n, i, fd, fd_cli, idx;
@@ -24,16 +42,21 @@ int main(int argc, char *argv[])
 
     PEDIDO_CLIENTE pc;
     RESPOSTA_SERVER rs;
+    SERVICO svc;
 
     // =====================================
 
     // Cria o FIFO do controlador
-    mkfifo(SRV_FIFO, 0640);
+    if (mkfifo(SRV_FIFO, 0640) == -1)
+    {
+        printf("Erro ao criar o fifo do controlador.\n");
+        exit(1);
+    }
     fd = open(SRV_FIFO, O_RDWR);
     if (fd == -1)
     {
-        printf("Erro ao abrir o FIFO 'controlador'");
-        return 1;
+        printf("Erro ao abrir o fifo do controlador");
+        exit(1);
     }
 
     // =====================================
@@ -44,6 +67,11 @@ int main(int argc, char *argv[])
     {
         clientes[i] = -1;
     }
+
+    pthread_t thread_1, thread_2, thread_3;
+    pthread_create(&thread_1, NULL, tempo, NULL);
+    pthread_create(&thread_2, NULL, cliente, NULL);
+    pthread_create(&thread_3, NULL, administrador, NULL);
 
     // =====================================
 
@@ -63,7 +91,7 @@ int main(int argc, char *argv[])
 
         if (n == sizeof(PEDIDO_CLIENTE))
         {
-            printf("Recebi %d bytes... do cliente %d\n", n, pc.pid);
+            printf("Recebi %d bytes... do cliente %d\n", n, pc.pid_cliente);
 
             // =====================================
 
@@ -71,7 +99,7 @@ int main(int argc, char *argv[])
             for (posicao_pid = -1, livre = -1, i = 0; i < NCLIENTES; i++)
             {
                 // Verifica se o utilizador ja existe
-                if (clientes[i] == pc.pid)
+                if (clientes[i] == pc.pid_cliente)
                     posicao_pid = i;
 
                 // Verifica se existe espaço no array
@@ -84,7 +112,7 @@ int main(int argc, char *argv[])
             if (posicao_pid == -1 && livre != -1)
             {
                 posicao_pid = livre;
-                clientes[posicao_pid] = pc.pid;
+                clientes[posicao_pid] = pc.pid_cliente;
             }
             // Se nao existe e nao tem espaço livre, avisa o utilizador e não adiciona
             if (posicao_pid == -1 && livre == -1)
@@ -109,8 +137,8 @@ int main(int argc, char *argv[])
             fd_cli = open(str_pid, O_WRONLY);
             if (fd_cli < 0)
             {
-                printf("[SERVIDOR] Erro ao abrir o FIFO 'cli_%d'\n", pc.pid);
-                snprintf(rs.msg, sizeof(rs.msg), "[SERVIDOR] Erro ao abrir o FIFO 'cli_%d'\n", pc.pid);
+                printf("[SERVIDOR] Erro ao abrir o FIFO 'cli_%d'\n", pc.pid_cliente);
+                snprintf(rs.msg, sizeof(rs.msg), "[SERVIDOR] Erro ao abrir o FIFO 'cli_%d'\n", pc.pid_cliente);
             }
             else
             {
@@ -135,7 +163,9 @@ int main(int argc, char *argv[])
                 if (strcmp(pc.comando, "cancelar") == 0)
                 {
                     printf("Comando Recebido: %s\n", pc.comando);
-                    printf("ID Recebido: %d\n", pc.id_servico);
+                    
+                    // Necessário reformular por causa do array de servicos
+                    //printf("ID Recebido: %d\n", svc.id_servico);
 
                     // Envia a resposta ao cliente
                     snprintf(rs.msg, sizeof(rs.msg), "[SERVIDOR] CANCELAMENTO RECEBIDO");
@@ -166,6 +196,7 @@ int main(int argc, char *argv[])
         //     printf("CLIENTES[%d] = %d\n", i, clientes[i]);
         // }
     } while (strcmp(pc.comando, "terminar") != 0);
+
 
     close(fd);
     unlink(SRV_FIFO);

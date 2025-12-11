@@ -13,29 +13,34 @@
 #include <time.h>
 #include "util.h"
 
-int main(int argc, char *argv[])
-{
+void verificação_inicial(int argc) {
     // Check Inicial ao iniciar o CLiente
     setbuf(stdout, NULL);
 
-    if (argc < 2)
-    {
+    // Check Inicial ao iniciar o CLiente
+    if (argc < 2 || argc > 2) {
         printf("[Erro ao Iniciar] Uso correto: ./cliente <username>\n");
-        return 1;
+        exit(1);
     }
 
     // Verifica se o controlador está a funcionar
     if (access(SRV_FIFO, F_OK) != 0)
     {
         printf("[ERRO] O 'controlador' não está a funcionar!\n");
-        exit(3);
+        exit(1);
     };
+}
+
+int main(int argc, char *argv[])
+{
+    verificação_inicial(argc);
 
     // =====================================
 
     // Definicoes de estruturas
     PEDIDO_CLIENTE pc;
     RESPOSTA_SERVER rs;
+    SERVICO svc;
 
     // =====================================
 
@@ -62,20 +67,20 @@ int main(int argc, char *argv[])
     }
 
     // Cria o FIFO do cliente (Exemplo: cli_1234)
-    pc.pid = getpid();
-    sprintf(str_pid, CLI_FIFO, pc.pid);
+    pc.pid_cliente = getpid();
+    sprintf(str_pid, CLI_FIFO, pc.pid_cliente);
     mkfifo(str_pid, 0640);
     fd_cli = open(str_pid, O_RDWR | O_NONBLOCK);
     if (fd_cli == -1)
     {
-        printf("Erro ao abrir o FIFO 'cli_%d'", pc.pid);
+        printf("Erro ao abrir o FIFO 'cli_%d'", pc.pid_cliente);
         return 1;
     }
 
     // =====================================
 
     printf("Bem-vindo, %s!\n", pc.username);
-    printf("O teu pid de cliente é %d\n", pc.pid);
+    printf("O teu pid de cliente é %d\n", pc.pid_cliente);
 
     printf("\nComandos disponíveis:\n");
     printf("\t- agendar <hora> <origem> <distancia>\n");
@@ -199,7 +204,9 @@ int main(int argc, char *argv[])
 
                     printf("Comando válido: cancelar id=%s\n", id_servico);
                     strcpy(pc.comando, cmd);
-                    pc.id_servico = atoi(id_servico);
+
+                    // Necessario reformular por causa do array de servicos
+                    //svc.id_servico = atoi(id_servico);
                 }
 
                 // =====================================
