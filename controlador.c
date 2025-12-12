@@ -16,26 +16,30 @@
 
 #include "util.h"
 
-void *tempo()
+void *tempo(void *arg)
 {
     printf("Ola thread1\n");
     return NULL;
 }
 
-void *cliente()
+void *cliente(void *arg)
 {
-    printf("Ola thread2\n");
+    pthread_mutex_lock(&mutex);
+    
+    pthread_mutex_unlock(&mutex);
     return NULL;
 }
 
-void *administrador()
+void *administrador(void *arg)
 {
-    printf("Ola thread3\n");
+    pthread_mutex_lock(&mutex);
+    
+    pthread_mutex_unlock(&mutex);
     return NULL;
 }
 
 // Envia repostas ao respetivo cliente pelo pid do cliente
-void reposta_cliente(int pid_cli, char *mensagem) {
+void envia_msg_cliente(int pid_cli, char *mensagem) {
     char fd_cli[20];
     sprintf(fd_cli, CLI_FIFO, pid_cli);
     int fd = open(fd_cli, O_WRONLY);
@@ -50,6 +54,7 @@ void reposta_cliente(int pid_cli, char *mensagem) {
 
 void terminar_servidor(int s)
 {
+    
     unlink(SRV_FIFO);
     servidor_ativo = 0;
     int i;
@@ -65,6 +70,38 @@ void terminar_servidor(int s)
     exit(0);
 }
 
+void mostraComandosServidor()
+{
+    printf("_________________________________________________________________\n");
+    printf("|                                                               |\n");
+    printf("|               ----- COMANDOS DISPONIVEIS -----                |\n");
+    printf("|                                                               |\n");
+    printf("|   > listar                                                    |\n");
+    printf("|       » Mostra todos os servicos agendados                    |\n");
+    printf("|                                                               |\n");
+    printf("|   > utiliz                                                    |\n");
+    printf("|       » Mostra utilizadores conectados                        |\n");
+    printf("|                                                               |\n");
+    printf("|   > frota                                                     |\n");
+    printf("|       » Mostra percentagem de viagem dos veiculos             |\n");
+    printf("|                                                               |\n");
+    printf("|   > cancelar <id_servico>                                     |\n");
+    printf("|		» Cancela um servico pelo seu id (0 = todos)            |\n");
+    printf("|                                                               |\n");
+    printf("|   > km                                                        |\n");
+    printf("|       » Mostra total de km percorridos por todos os veiculos  |\n");
+    printf("|                                                               |\n");
+    printf("|   > hora                                                      |\n");
+    printf("|       » Mostra a hora simulada atual do servidor              |\n");
+    printf("|                                                               |\n");
+    printf("|   > terminar                                                  |\n");
+    printf("|       » Termina a aplicacao do Cliente                        |\n");
+    printf("|_______________________________________________________________|");
+    fflush(stdout);
+
+    return NULL;
+}
+
 int main(int argc, char *argv[])
 {
     int n, i, fd, fd_cli, idx;
@@ -77,27 +114,22 @@ int main(int argc, char *argv[])
 
     // =====================================
 
-    // Cria o FIFO do controlador
+    // Cria o FIFO do servidor controlador
     if (mkfifo(SRV_FIFO, 0640) == -1)
     {
-        printf("Erro ao criar o fifo do controlador.\n");
+        printf("[SERVIDOR] [ERRO] >> Erro ao criar o fifo do controlador.\n");
         exit(1);
     }
     fd = open(SRV_FIFO, O_RDWR);
     if (fd == -1)
     {
-        printf("Erro ao abrir o fifo do controlador");
+        printf("[SERVIDOR] [ERRO] >> Erro ao abrir o fifo do controlador");
         exit(1);
     }
 
     // =====================================
 
-    // Cria o array de utilizadores
-    /* int clientes[NCLIENTES];
-    for (i = 0; i < NCLIENTES; i++)
-    {
-        clientes[i] = -1;
-    } */
+    pthread_mutex_init(&mutex, NULL);
 
     pthread_t thread_1, thread_2, thread_3;
     pthread_create(&thread_1, NULL, tempo, NULL);
@@ -106,13 +138,18 @@ int main(int argc, char *argv[])
 
     // =====================================
 
-    printf("O 'controlador' está a funcionar!\n");
+    // Apresentação ao administrador
+    printf("\n| ============================================ |\n");
+    printf("            [ O SERVIDOR FOI INICIADO ]         \n");
+    printf("| ============================================ |\n");
+    printf("\n| ===== Bem-vindo, Administrador (PID %d) ===== |\n", getpid());
+    mostraComandosServidor();
 
     // =====================================
 
     // Fica à espera de pedidos
     // TODO: PRECISA DE REFORMULAÇÃO!!!
-    do
+    /*do
     {
         n = read(fd, &pc, sizeof(PEDIDO_CLIENTE));
         if (n == -1)
@@ -164,7 +201,7 @@ int main(int argc, char *argv[])
             // =====================================
 
             // No str_pid coloca o PID do utilizador formatado
-            sprintf(str_pid, CLI_FIFO, clientes[posicao_pid]);
+            /* sprintf(str_pid, CLI_FIFO, clientes[posicao_pid]);
             // Abre o FIFO especifico do cliente
             fd_cli = open(str_pid, O_WRONLY);
             if (fd_cli < 0)
@@ -217,7 +254,7 @@ int main(int argc, char *argv[])
 
             // Fecha o FIFO do cliente
             close(fd_cli);
-        }
+        } */
 
         // =====================================
 
@@ -227,10 +264,15 @@ int main(int argc, char *argv[])
         // {
         //     printf("CLIENTES[%d] = %d\n", i, clientes[i]);
         // }
-    } while (strcmp(pc.comando, "terminar") != 0);
+    //} while (strcmp(pc.comando, "terminar") != 0); */
 
+    // =====================================
 
-    close(fd);
-    unlink(SRV_FIFO);
-    return 0;
+    pthread_join(thread_1, NULL);
+    pthread_join(thread_2, NULL);
+    pthread_join(thread_3, NULL);
+
+    pthread_mutex_destroy(&mutex);
+
+    // =====================================
 }

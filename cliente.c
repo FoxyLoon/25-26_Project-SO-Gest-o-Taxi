@@ -10,18 +10,76 @@
 // Assim que veiculo chegar, indica local de destino
 // Não pode cancelar quando veiculo chegar
 
-#include <time.h>
 #include "util.h"
 
-void verificação_inicial(int argc) {
+// Variaveis Globais
+char cli_fifo[30];
+
+void terminarCliente(int s)
+{
+    unlink(cli_fifo);
+    printf("\n| ============================================ |\n");
+    printf("            [ O CLIENTE FOI ENCERRADO ]         \n");
+    printf("| ============================================ |\n");
+    exit(0);
+}
+
+// Está sempre à escuta de mensagens do servidor controlador
+void *recebe_msg_servidor(void *arg)
+{
+    int fd_cli = open(cli_fifo, O_RDONLY | O_NONBLOCK);
+    if (fd_cli == -1)
+    {
+        printf("[CLIENTE] [ERRO] >> Erro ao abrir o fifo do cliente (PID %d)!", getpid());
+        exit(1);
+    }
+    RESPOSTA_SERVER rs;
+    while (read(fd_cli, &rs, sizeof(rs)) > 0)
+    {
+        printf("[SERVIDOR] [MSG] >> %s\n", rs.msg);
+        fflush(stdout);
+    }
+
+    return NULL;
+}
+
+void mostraComandos()
+{
+    printf("_________________________________________________\n");
+    printf("|												|\n");
+    printf("|		----- COMANDOS DISPONIVEIS -----		|\n");
+    printf("|												|\n");
+    printf("|	> agendar <hora> <origem> <distancia>		|\n");
+    printf("|		» Agenda um servico;					|\n");
+    printf("|												|\n");
+    printf("|	> consultar									|\n");
+    printf("|		» Consulta servicos agendados			|\n");
+    printf("|												|\n");
+    printf("|	> cancelar <id_servico>						|\n");
+    printf("|		» Cancela um servico pelo seu id		|\n");
+    printf("|												|\n");
+    printf("|	> terminar									|\n");
+    printf("|		» Termina a aplicacao do Cliente		|\n");
+    printf("|_______________________________________________|");
+    fflush(stdout);
+
+    return NULL;
+}
+
+int main(int argc, char *argv[])
+{
     // Check Inicial ao iniciar o CLiente
     setbuf(stdout, NULL);
 
     // Check Inicial ao iniciar o CLiente
-    if (argc < 2 || argc > 2) {
-        printf("[Erro ao Iniciar] Uso correto: ./cliente <username>\n");
-        exit(1);
-    }
+    if (argc < 2 || argc > 2)
+        return printf("[CLIENTE] [ERRO] >> Uso correto: ./cliente <username>\n");
+
+    // Caso Saida CTRL + C
+    signal(SIGINT, terminarCliente);
+
+    // Caso Servidor Termine
+    signal(SIGUSR1, terminarCliente);
 
     // Verifica se o controlador está a funcionar
     if (access(SRV_FIFO, F_OK) != 0)
@@ -29,69 +87,90 @@ void verificação_inicial(int argc) {
         printf("[ERRO] O 'controlador' não está a funcionar!\n");
         exit(1);
     };
-}
-
-int main(int argc, char *argv[])
-{
-    verificação_inicial(argc);
 
     // =====================================
 
     // Definicoes de estruturas
-    PEDIDO_CLIENTE pc;
-    RESPOSTA_SERVER rs;
+
     SERVICO svc;
+    int n;
 
     // =====================================
-
-    int n, fd, fd_cli;
-
-    // Usado para verificar quando deve ler ou escrever
-    fd_set fds;
-    int res;
-
-    // Usado para gerir pids dos clientes no FIFOs
-    char str_pid[20];
-
-    // =====================================
-
-    // Preenche o username do utilizador
-    strcpy(pc.username, argv[1]);
 
     // Abre o FIFO do controlador
-    fd = open(SRV_FIFO, O_WRONLY);
-    if (fd == -1)
+    int fd_srv = open(SRV_FIFO, O_WRONLY);
+    if (fd_srv == -1)
     {
         printf("Erro ao abrir o FIFO 'controlador'");
-        return 1;
+        exit(1);
     }
 
-    // Cria o FIFO do cliente (Exemplo: cli_1234)
-    pc.pid_cliente = getpid();
-    sprintf(str_pid, CLI_FIFO, pc.pid_cliente);
-    mkfifo(str_pid, 0640);
-    fd_cli = open(str_pid, O_RDWR | O_NONBLOCK);
-    if (fd_cli == -1)
+    // =====================================
+
+    // Criação do FIFO do cliente
+    sprintf(cli_fifo, CLI_FIFO, getpid());
+    mkfifo(cli_fifo, 0640);
+
+    // Thread de Escuta do Servidor
+    pthread_t thread_1;
+    pthread_create(&thread_1, NULL, recebe_msg_servidor, NULL);
+
+    // =====================================
+
+    // Entrada no Servidor
+    PEDIDO_CLIENTE pc;
+    strcpy(pc.pid_cliente, getpid());
+    strcpy(pc.comando, "login");
+    strcpy(pc.username, argv[1]);
+    strcpy(pc.hora, 0);
+    strcpy(pc.distancia, 0);
+    fd_srv = open(SRV_FIFO, O_WRONLY);
+    if (fd_srv == -1)
+        sair(0);
+    write(fd_srv, &pc, sizeof(pc));
+    close(fd_srv);
+
+    // =====================================
+
+    // Apresentação ao utilizador
+    printf("\n| ============================================ |\n");
+    printf("            [ O CLIENTE FOI INICIADO ]          \n");
+    printf("| ============================================ |\n");
+    printf("\n| ===== Bem-vindo, %s (PID %d) ===== |\n", pc.username, pc.pid_cliente);
+    mostraComandos();
+    printf("[CLIENTE] << ");
+
+    // =====================================
+
+    // Input e Validação do Utilizador
+    char buffer[128];
+    while (fgets(buffer, sizeof(buffer), stdin))
     {
-        printf("Erro ao abrir o FIFO 'cli_%d'", pc.pid_cliente);
-        return 1;
+        // =====================================
+        // Remove o \n
+        buffer[strcspn(buffer, "\n")] = '\0';
+
+        // Extrai o primeiro termo do buffer
+        char *cmd = strtok(buffer, " ");
+
+        // =====================================
+
+        // Verifica se cmd o está NULL/VAZIO
+        //tolower(cmd); //Necessario verificar se funciona
+        if(!strcmp(cmd, "terminar")) {
+            break;
+        } else if (!strcmp(cmd, NULL))
+        {
+            printf("[CLIENTE] >> Comando vazio!\n");
+            continue;
+        } else {
+            printf("[CLIENTE] >> Comando '%s' inválido!\n", cmd);
+        }
     }
-
-    // =====================================
-
-    printf("Bem-vindo, %s!\n", pc.username);
-    printf("O teu pid de cliente é %d\n", pc.pid_cliente);
-
-    printf("\nComandos disponíveis:\n");
-    printf("\t- agendar <hora> <origem> <distancia>\n");
-    printf("\t- consultar\n");
-    printf("\t- cancelar <id>\n");
-    printf("\t- terminar\n");
-
-    // =====================================
+    terminar_cliente(0);
 
     // Validação de Input
-    do
+    /* do
     {
 
         FD_ZERO(&fds);
@@ -105,11 +184,9 @@ int main(int argc, char *argv[])
         {
             if (FD_ISSET(0, &fds))
             {
-                
+
                 fflush(stdout);
                 fflush(stdin);
-
-                char buffer[128];
 
                 // Input do Utilizador
                 if (!fgets(buffer, sizeof(buffer), stdin))
@@ -119,18 +196,6 @@ int main(int argc, char *argv[])
                 }
 
                 // =====================================
-
-                buffer[strcspn(buffer, "\n")] = '\0';
-
-                // Extrai o primeiro termo do buffer
-                char *cmd = strtok(buffer, " ");
-
-                // Verifica se o está NULL/VAZIO
-                if (cmd == NULL)
-                {
-                    printf("Comando vazio.\n");
-                    continue;
-                }
 
                 // =====================================
 
@@ -206,7 +271,7 @@ int main(int argc, char *argv[])
                     strcpy(pc.comando, cmd);
 
                     // Necessario reformular por causa do array de servicos
-                    //svc.id_servico = atoi(id_servico);
+                    // svc.id_servico = atoi(id_servico);
                 }
 
                 // =====================================
@@ -252,12 +317,11 @@ int main(int argc, char *argv[])
                 printf(" %s\n", rs.msg);
             }
         }
-        
+
     } while (strcmp(pc.comando, "terminar") != 0);
 
     close(fd_cli);
-    unlink(str_pid);
-    close(fd);
+    close(fd_srv); */
 
     exit(0);
 }
