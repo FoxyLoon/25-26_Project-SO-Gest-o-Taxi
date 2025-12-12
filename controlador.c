@@ -18,8 +18,16 @@
 
 void *tempo(void *arg)
 {
+    // fazer com sleep
+    // lança thread para o veiculo (thread dentro de thread)
     printf("Ola thread1\n");
     return NULL;
+}
+
+
+// serao 10 veiculos
+void *veiculo(void *arg) {
+
 }
 
 void *cliente(void *arg)
