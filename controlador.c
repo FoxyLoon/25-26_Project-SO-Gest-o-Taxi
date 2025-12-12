@@ -72,34 +72,19 @@ void terminar_servidor(int s)
 
 void mostraComandosServidor()
 {
-    printf("_________________________________________________________________\n");
-    printf("|                                                               |\n");
-    printf("|               ----- COMANDOS DISPONIVEIS -----                |\n");
-    printf("|                                                               |\n");
-    printf("|   > listar                                                    |\n");
-    printf("|       » Mostra todos os servicos agendados                    |\n");
-    printf("|                                                               |\n");
-    printf("|   > utiliz                                                    |\n");
-    printf("|       » Mostra utilizadores conectados                        |\n");
-    printf("|                                                               |\n");
-    printf("|   > frota                                                     |\n");
-    printf("|       » Mostra percentagem de viagem dos veiculos             |\n");
-    printf("|                                                               |\n");
-    printf("|   > cancelar <id_servico>                                     |\n");
-    printf("|		» Cancela um servico pelo seu id (0 = todos)            |\n");
-    printf("|                                                               |\n");
-    printf("|   > km                                                        |\n");
-    printf("|       » Mostra total de km percorridos por todos os veiculos  |\n");
-    printf("|                                                               |\n");
-    printf("|   > hora                                                      |\n");
-    printf("|       » Mostra a hora simulada atual do servidor              |\n");
-    printf("|                                                               |\n");
-    printf("|   > terminar                                                  |\n");
-    printf("|       » Termina a aplicacao do Cliente                        |\n");
-    printf("|_______________________________________________________________|");
+    printf("_________________________________________________________________________________________\n");
+    printf("|                                                                                       |\n");
+    printf("|   [ COMANDOS DISPONIVEIS ]    [ DESCRIÇÕES ]                                          |\n");
+    printf("|                                                                                       |\n");
+    printf("|   > listar                    » Mostra todos os servicos agendados                    |\n");
+    printf("|   > utiliz                    » Mostra utilizadores conectados                        |\n");
+    printf("|   > frota                     » Mostra percentagem de viagem dos veiculos             |\n");
+    printf("|   > cancelar <id_servico>     » Cancela um servico pelo seu id (0 = todos)            |\n");
+    printf("|   > km                        » Mostra total de km percorridos por todos os veiculos  |\n");
+    printf("|   > hora                      » Mostra a hora simulada atual do servidor              |\n");
+    printf("|   > terminar                  » Termina o Servidor e todos os Clientes ligados        |\n");
+    printf("|_______________________________________________________________________________________|\n");
     fflush(stdout);
-
-    return NULL;
 }
 
 int main(int argc, char *argv[])
