@@ -53,6 +53,7 @@ int hora_simulada = 0;
 int servidor_ativo = 1;
 int CLIENTES_ATIVOS = 0;
 int SERVICOS_ATIVOS = 0;
+
 pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
 // =====================================
@@ -90,6 +91,12 @@ typedef struct {
     int distancia;
 } SERVICO;
 
+typedef struct {
+    int fd;
+    pthread_mutex_t * mut;
+    int continua;
+} TDADOSTHREAD;
+
 // =====================================
 
 // Quantidades de Clientes e Servicos
@@ -98,7 +105,8 @@ SERVICO servicos[NSERVICOS];
 
 // =====================================
 // Funções Globais
-
+// 1 = Verdadeiro
+// 0 = Falso
 // Verifica se o char s é um número
 int isNumber(const char *s) {
     for (int i = 0; s[i]; i++)

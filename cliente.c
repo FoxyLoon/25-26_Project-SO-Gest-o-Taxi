@@ -37,18 +37,19 @@ void terminarCliente(int s)
 // Está sempre à escuta de mensagens do servidor controlador
 void *recebe_msg_servidor(void *arg)
 {
-    int fd_cli = open(cli_fifo, O_RDONLY | O_NONBLOCK);
-    if (fd_cli == -1)
-    {
-        printf("[CLIENTE] [ERRO] >> Erro ao abrir o fifo do cliente (PID %d)!", getpid());
-        exit(1);
-    }
+    TDADOSTHREAD *tdt = (TDADOSTHREAD *)arg;
     RESPOSTA_SERVER rs;
+    while (tdt -> continua) {
+        read (tdt -> fd, &rs, sizeof(rs));
+        printf("[SERVIDOR] [MSG] >> %s\n", rs.msg);
+        fflush(stdout);
+    }
+    /* RESPOSTA_SERVER rs;
     while (read(fd_cli, &rs, sizeof(rs)) > 0)
     {
         printf("[SERVIDOR] [MSG] >> %s\n", rs.msg);
         fflush(stdout);
-    }
+    } */
 
     return NULL;
 }
@@ -94,9 +95,17 @@ int main(int argc, char *argv[])
     sprintf(cli_fifo, CLI_FIFO, getpid());
     mkfifo(cli_fifo, 0640);
 
+    TDADOSTHREAD dt;
+    dt.fd = open(cli_fifo, O_RDONLY | O_NONBLOCK);
+    if (dt.fd == -1)
+    {
+        printf("[CLIENTE] [ERRO] >> Erro ao abrir o fifo do cliente (PID %d)!", getpid());
+        exit(1);
+    }
+
     // Thread de Escuta do Servidor
     pthread_t thread_1;
-    pthread_create(&thread_1, NULL, recebe_msg_servidor, NULL);
+    pthread_create(&thread_1, NULL, recebe_msg_servidor, &dt);
 
     // =====================================
 
@@ -120,10 +129,11 @@ int main(int argc, char *argv[])
     // =====================================
 
     // Apresentação ao utilizador
-    printf("\n| ============================================ |\n");
-    printf("            [ O CLIENTE FOI INICIADO ]          \n");
     printf("| ============================================ |\n");
-    printf("\n| ===== Bem-vindo, %s (PID %d) ===== |\n", pc.username, pc.pid_cliente);
+    printf("            [ O CLIENTE FOI INICIADO ]        \n");
+    printf("            Bem-vindo, %s (PID %d)        \n", pc.username, pc.pid_cliente);
+    printf("| ============================================ |\n");
+    
     mostraComandos();
     printf("[CLIENTE] << ");
 
@@ -149,7 +159,8 @@ int main(int argc, char *argv[])
 
         if (arg_num > 0)
         {
-            if (!strcmp(comando, "help")) {
+            if (!strcmp(comando, "help"))
+            {
                 mostraComandos();
                 printf("[CLIENTE] << ");
                 comando_valido = 0;
@@ -157,7 +168,8 @@ int main(int argc, char *argv[])
 
             else if (!strcmp(comando, "terminar"))
             {
-                if (arg_num > 1)
+
+                if (arg_num > 1 || strcmp(comando, buffer))
                 {
                     printf("[CLIENTE] [ERRO] >> '%s' não aceita argumentos.\n", comando);
                     comando_valido = 0;
@@ -172,7 +184,7 @@ int main(int argc, char *argv[])
 
             else if (!strcmp(comando, "consultar"))
             {
-                if (arg_num > 1)
+                if (arg_num > 1 || strcmp(comando, buffer))
                 {
                     printf("[CLIENTE] [ERRO] >> '%s' não aceita argumentos.\n", comando);
                     comando_valido = 0;
@@ -216,8 +228,10 @@ int main(int argc, char *argv[])
                     printf("[CLIENTE] [ERRO] >> O argumento '<hora>' deve ser numérico.\n");
                     comando_valido = 0;
                 }
-                else if (arg_num == 2 && strcmp(comando, buffer))
+                else if (arg_num == 3 && isNumber(origem))
                 {
+                    int number;
+                    printf("%d", number = isNumber(origem));
                     printf("[CLIENTE] [ERRO] >> O argumento '<origem>' deve ser uma string.\n");
                     comando_valido = 0;
                 }
@@ -262,7 +276,6 @@ int main(int argc, char *argv[])
             }
         }
 
-        printf("Estrutura: \n");
         printf("Argumentos: %d\n", arg_num);
         printf("Comando: %s\n", pc.comando);
         printf("Hora: %d\n", pc.hora);
@@ -282,7 +295,7 @@ int main(int argc, char *argv[])
             }
             write(fd_srv, &pc, sizeof(PEDIDO_CLIENTE)); */
             printf("[SERVIDOR] << [CLIENTE]\nEnviei pedido '%s' ao controlador\n", pc.comando);
-            //close(fd_srv);
+            // close(fd_srv);
         }
 
         // =====================================
