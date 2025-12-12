@@ -67,9 +67,10 @@ typedef struct
 
 typedef struct {
     int pid_cliente;
-    char comando[TAM_CMD];
     char username[TAM];
+    char comando[TAM_CMD];
     int hora;
+    int id_servico;
     char origem[TAM];
     int distancia;
 } PEDIDO_CLIENTE;

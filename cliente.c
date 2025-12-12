@@ -20,13 +20,13 @@ void terminarCliente(int s)
     unlink(cli_fifo);
 
     if (s == SIGUSR1)
-        {
-            printf("SAIDA 1");
-        }
-        else
-        {
-            printf("SAIDA 2");
-        }
+    {
+        printf("SAIDA 1");
+    }
+    else
+    {
+        printf("SAIDA 2");
+    }
 
     printf("\n| ============================================ |\n");
     printf("            [ O CLIENTE FOI ENCERRADO ]         \n");
@@ -100,12 +100,14 @@ int main(int argc, char *argv[])
 
     // =====================================
 
-    // Entrada no Servidor
+    // Entrada no Servidor + Inicialização
     PEDIDO_CLIENTE pc;
     pc.pid_cliente = getpid();
-    strcpy(pc.comando, "login");
     strcpy(pc.username, argv[1]);
+    strcpy(pc.comando, "novo_cliente");
     pc.hora = 0;
+    pc.id_servico = 0;
+    strcpy(pc.origem, "");
     pc.distancia = 0;
 
     // Envia pedido ao Servidor
@@ -128,149 +130,163 @@ int main(int argc, char *argv[])
     // =====================================
 
     // Input e Validação do Utilizador
-    char buffer[128];
+    char buffer[128], comando[20], origem[20];
+    int arg_hora_id = 0, distancia = 0, comando_valido = 0;
     while (fgets(buffer, sizeof(buffer), stdin))
     {
         // =====================================
         // Remove o \n
         buffer[strcspn(buffer, "\n")] = '\0';
 
-        // Extrai o primeiro termo do buffer
-        char *cmd = strtok(buffer, " ");
+        // Converte para argumentos e guarda argumentos válidos em arg_num
+        int arg_num = sscanf(buffer, "%s %d %s %d", comando, &arg_hora_id, origem, &distancia);
 
-        // =====================================
-
-        // Verifica se cmd o está NULL/VAZIO
-        // tolower(cmd); //Necessario verificar se funciona
-
-        if (cmd == NULL)
+        if (arg_num <= 0)
         {
             printf("[CLIENTE] >> Comando vazio!\n");
-            printf("[CLIENTE] << ");
+            comando_valido = 0;
         }
 
-        // =====================================
-
-        else if (!strcmp(cmd, "terminar"))
+        if (arg_num > 0)
         {
-            char *extra = strtok(NULL, " ");
-            if (extra != NULL)
-            {
-                printf("[CLIENTE] [ERRO] >> '%s' não aceita argumentos.\n", cmd);
+            if (!strcmp(comando, "help")) {
+                mostraComandos();
                 printf("[CLIENTE] << ");
+                comando_valido = 0;
             }
-            break;
+
+            else if (!strcmp(comando, "terminar"))
+            {
+                if (arg_num > 1)
+                {
+                    printf("[CLIENTE] [ERRO] >> '%s' não aceita argumentos.\n", comando);
+                    comando_valido = 0;
+                }
+                else
+                {
+                    strcpy(pc.comando, comando);
+                    comando_valido = 1;
+                    break;
+                }
+            }
+
+            else if (!strcmp(comando, "consultar"))
+            {
+                if (arg_num > 1)
+                {
+                    printf("[CLIENTE] [ERRO] >> '%s' não aceita argumentos.\n", comando);
+                    comando_valido = 0;
+                }
+                else
+                {
+                    strcpy(pc.comando, comando);
+                    comando_valido = 1;
+                }
+            }
+
+            else if (!strcmp(comando, "cancelar"))
+            {
+                if (arg_num == 1 && strcmp(comando, buffer))
+                {
+                    printf("[CLIENTE] [ERRO] >> O argumento '<id>' deve ser numérico.\n");
+                    comando_valido = 0;
+                }
+                else if (arg_num > 2)
+                {
+                    printf("[CLIENTE] [ERRO] >> '%s' tem demasiados argumentos!\n", comando);
+                    comando_valido = 0;
+                }
+                else if (arg_num < 2)
+                {
+                    printf("[CLIENTE] [ERRO] >> Falta argumento: '<id>'!\n");
+                    comando_valido = 0;
+                }
+                else
+                {
+                    strcpy(pc.comando, comando);
+                    pc.id_servico = arg_hora_id;
+                    comando_valido = 1;
+                }
+            }
+
+            else if (!strcmp(comando, "agendar"))
+            {
+                if (arg_num == 1 && strcmp(comando, buffer))
+                {
+                    printf("[CLIENTE] [ERRO] >> O argumento '<hora>' deve ser numérico.\n");
+                    comando_valido = 0;
+                }
+                else if (arg_num == 2 && strcmp(comando, buffer))
+                {
+                    printf("[CLIENTE] [ERRO] >> O argumento '<origem>' deve ser uma string.\n");
+                    comando_valido = 0;
+                }
+                else if (arg_num == 3 && strcmp(comando, buffer))
+                {
+                    printf("[CLIENTE] [ERRO] >> O argumento '<distancia>' deve ser numérico.\n");
+                    comando_valido = 0;
+                }
+                else if (arg_num > 4)
+                {
+                    printf("[CLIENTE] [ERRO] >> '%s' tem demasiados argumentos!\n", comando);
+                    comando_valido = 0;
+                }
+                else if (arg_num < 2)
+                {
+                    printf("[CLIENTE] [ERRO] >> Faltam argumentos: '<hora>', '<origem>' e '<distancia>'!\n");
+                    comando_valido = 0;
+                }
+                else if (arg_num < 3)
+                {
+                    printf("[CLIENTE] [ERRO] >> Faltam argumentos: '<origem>' e '<distancia>'!\n");
+                    comando_valido = 0;
+                }
+                else if (arg_num < 4)
+                {
+                    printf("[CLIENTE] [ERRO] >> Falta argumento: '<distancia>'!\n");
+                    comando_valido = 0;
+                }
+                else
+                {
+                    strcpy(pc.comando, comando);
+                    pc.hora = arg_hora_id;
+                    strcpy(pc.origem, origem);
+                    pc.distancia = distancia;
+                    comando_valido = 1;
+                }
+            }
+            else
+            {
+                printf("[CLIENTE] [ERRO] >> Comando '%s' inválido ou desconhecido!\n", comando);
+                comando_valido = 0;
+            }
         }
 
-        // =====================================
-
-        else if (!strcmp(cmd, "agendar"))
-        {
-
-            char *hora = strtok(NULL, " ");
-            char *origem = strtok(NULL, " ");
-            char *dist = strtok(NULL, " ");
-            char *extra = strtok(NULL, " ");
-
-            if (!hora || !origem || !dist || extra != NULL)
-            {
-                printf("[CLIENTE] [ERRO] >> Uso correto: agendar <hora> <origem> <distancia>\n");
-                printf("[CLIENTE] << ");
-                continue;
-            }
-
-            if (!isNumber(hora))
-            {
-                printf("[CLIENTE] [ERRO] >> A 'Hora' deve ser numérica (0-24).\n");
-                printf("[CLIENTE] << ");
-                continue;
-            }
-            if (isNumber(origem))
-            {
-                printf("[CLIENTE] [ERRO] >> A 'Origem' deve ser uma string.\n");
-                printf("[CLIENTE] << ");
-                continue;
-            }
-
-            if (!isNumber(dist))
-            {
-                printf("[CLIENTE] [ERRO] >> A 'Distancia' deve ser numérica.\n");
-                printf("[CLIENTE] << ");
-                continue;
-            }
-
-            printf("Comando válido: agendar | Hora = %s | Origem = %s | Distancia = %s\n", hora, origem, dist);
-
-            strcpy(pc.comando, cmd);
-            pc.hora = atoi(hora);
-            strcpy(pc.origem, origem);
-            pc.distancia = atoi(dist);
-        }
-
-        // =====================================
-
-        else if (!strcmp(cmd, "consultar"))
-        {
-            char *extra = strtok(NULL, " ");
-            if (extra != NULL)
-            {
-                printf("[CLIENTE] [ERRO] >> '%s' não aceita argumentos.\n", cmd);
-                printf("[CLIENTE] << ");
-                continue;
-            }
-
-            printf("Comando válido: consultar\n");
-            strcpy(pc.comando, cmd);
-        }
-
-        // =====================================
-
-        else if (!strcmp(cmd, "cancelar"))
-        {
-
-            char *id_servico = strtok(NULL, " ");
-            char *extra = strtok(NULL, " ");
-
-            if (id_servico == NULL || extra != NULL)
-            {
-                printf("[CLIENTE] [ERRO] >> Uso correto: cancelar <id>\n");
-                printf("[CLIENTE] << ");
-                continue;
-            }
-
-            if (!isNumber(id_servico))
-            {
-                printf("[CLIENTE] [ERRO] >> O 'ID' deve ser numérico.\n");
-                printf("[CLIENTE] << ");
-                continue;
-            }
-
-            printf("Comando válido: cancelar id=%s\n", id_servico);
-            strcpy(pc.comando, cmd);
-        }
-
-        // =====================================
-
-        else
-            printf("[CLIENTE] >> O comando '%s' não existe!\n", cmd);
-            printf("[CLIENTE] << ");
-
-        // =====================================
+        printf("Estrutura: \n");
+        printf("Argumentos: %d\n", arg_num);
+        printf("Comando: %s\n", pc.comando);
+        printf("Hora: %d\n", pc.hora);
+        printf("ID: %d\n", pc.id_servico);
+        printf("Origem: %s\n", pc.origem);
+        printf("Distancia: %d\n", pc.distancia);
+        printf("Comando Valido: %d\n", comando_valido);
 
         // Envio do pedido ao controlador
-        fd_srv = open(SRV_FIFO, O_WRONLY);
-        if (fd_srv == -1)
+        if (comando_valido == 1)
         {
-            printf("[CLIENTE] [ERRO] >> Erro ao abrir o fifo do controlador\n");
-            exit(1);
+            /* fd_srv = open(SRV_FIFO, O_WRONLY);
+            if (fd_srv == -1)
+            {
+                printf("[CLIENTE] [ERRO] >> Erro ao abrir o fifo do controlador\n");
+                exit(1);
+            }
+            write(fd_srv, &pc, sizeof(PEDIDO_CLIENTE)); */
+            printf("[SERVIDOR] << [CLIENTE]\nEnviei pedido '%s' ao controlador\n", pc.comando);
+            //close(fd_srv);
         }
-        write(fd_srv, &pc, sizeof(PEDIDO_CLIENTE));
-        printf("[SERVIDOR] << [CLIENTE]\nEnviei pedido '%s' ao controlador\n", pc.comando);
-        close(fd_srv);
 
         // =====================================
-        
-        printf("[CLIENTE] << ");
+        printf("\n[CLIENTE] << ");
     }
     terminarCliente(0);
 }
