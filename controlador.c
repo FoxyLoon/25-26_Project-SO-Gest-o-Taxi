@@ -24,30 +24,32 @@ void *tempo(void *arg)
     return NULL;
 }
 
-
 // serao 10 veiculos
-void *veiculo(void *arg) {
-
+void *veiculo(void *arg)
+{
 }
 
+// Processo comandos do cliente
 void *cliente(void *arg)
 {
     pthread_mutex_lock(&mutex);
-    
+
     pthread_mutex_unlock(&mutex);
     return NULL;
 }
 
+// Processa comandos do administrador
 void *administrador(void *arg)
 {
     pthread_mutex_lock(&mutex);
-    
+
     pthread_mutex_unlock(&mutex);
     return NULL;
 }
 
 // Envia repostas ao respetivo cliente pelo pid do cliente
-void envia_msg_cliente(int pid_cli, char *mensagem) {
+void envia_msg_cliente(int pid_cli, char *mensagem)
+{
     char fd_cli[20];
     sprintf(fd_cli, CLI_FIFO, pid_cli);
     int fd = open(fd_cli, O_WRONLY);
@@ -62,7 +64,7 @@ void envia_msg_cliente(int pid_cli, char *mensagem) {
 
 void terminar_servidor(int s)
 {
-    
+
     unlink(SRV_FIFO);
     servidor_ativo = 0;
     int i;
@@ -140,114 +142,289 @@ int main(int argc, char *argv[])
 
     // =====================================
 
-    // Fica à espera de pedidos
-    // TODO: PRECISA DE REFORMULAÇÃO!!!
-    /*do
+    // Input e Validação do Administraador
+    char buffer[128], comando[20], extra[20];
+    int id = 0, distancia = 0, comando_valido = 0;
+    while (fgets(buffer, sizeof(buffer), stdin))
     {
-        n = read(fd, &pc, sizeof(PEDIDO_CLIENTE));
-        if (n == -1)
+        // =====================================
+        // Remove o \n
+        buffer[strcspn(buffer, "\n")] = '\0';
+
+        // Converte para argumentos e guarda argumentos válidos em arg_num
+        int arg_num = sscanf(buffer, "%s %d %s", comando, &id, extra);
+
+        // =====================================
+
+        if (arg_num <= 0)
         {
-            printf("Erro ao ler do FIFO 'controlador'");
-            return 1;
+            printf("[SERVIDOR] >> Comando vazio!\n");
+            comando_valido = 0;
         }
 
-        if (n == sizeof(PEDIDO_CLIENTE))
+        if (arg_num > 0)
         {
-            printf("Recebi %d bytes... do cliente %d\n", n, pc.pid_cliente);
+            if (!strcmp(comando, "help"))
+            {
+                mostraComandos();
+                printf("[SERVIDOR] << ");
+                comando_valido = 0;
+            }
 
             // =====================================
 
-            // Verifica se existe espaço para o utilizador ou se ele ja existe
-            /* for (posicao_pid = -1, livre = -1, i = 0; i < NCLIENTES; i++)
+            else if (!strcmp(comando, "terminar"))
             {
-                // Verifica se o utilizador ja existe
-                if (clientes[i] == pc.pid_cliente)
-                    posicao_pid = i;
 
-                // Verifica se existe espaço no array
-                // Guarda o primeiro espaço livre que encontra
-                if (livre == -1 && clientes[i] == -1)
-                    livre = i;
+                if (arg_num > 1 || strcmp(comando, buffer))
+                {
+                    printf("[SERVIDOR] [ERRO] >> '%s' não aceita argumentos.\n", comando);
+                    comando_valido = 0;
+                }
+                else
+                {
+                    strcpy(pc.comando, comando);
+                    comando_valido = 1;
+                    break;
+                }
             }
-
-            // Se não existe não existe no array mas há uma espaço livre, adiciona ao array
-            if (posicao_pid == -1 && livre != -1)
-            {
-                posicao_pid = livre;
-                clientes[posicao_pid] = pc.pid_cliente;
-            }
-            // Se nao existe e nao tem espaço livre, avisa o utilizador e não adiciona
-            if (posicao_pid == -1 && livre == -1)
-            {
-                snprintf(rs.msg, sizeof(rs.msg), "[SERVIDOR] Não existe espaço para o utilizador!");
-                n = write(fd, &rs, sizeof(RESPOSTA_SERVER));
-                continue;
-            }
-
-            // Se existe e o comando dado no cliente for 'terminar', remove o utilizador
-            if (posicao_pid != -1 && (strcmp(pc.comando, "terminar") == 0))
-            {
-                clientes[posicao_pid] = -1;
-                continue;
-            } */
 
             // =====================================
 
-            // No str_pid coloca o PID do utilizador formatado
-            /* sprintf(str_pid, CLI_FIFO, clientes[posicao_pid]);
-            // Abre o FIFO especifico do cliente
-            fd_cli = open(str_pid, O_WRONLY);
-            if (fd_cli < 0)
+            else if (!strcmp(comando, "listar"))
             {
-                printf("[SERVIDOR] Erro ao abrir o FIFO 'cli_%d'\n", pc.pid_cliente);
-                snprintf(rs.msg, sizeof(rs.msg), "[SERVIDOR] Erro ao abrir o FIFO 'cli_%d'\n", pc.pid_cliente);
+
+                if (arg_num > 1 || strcmp(comando, buffer))
+                {
+                    printf("[SERVIDOR] [ERRO] >> '%s' não aceita argumentos.\n", comando);
+                    comando_valido = 0;
+                }
+                else
+                {
+                    strcpy(pc.comando, comando);
+                    comando_valido = 1;
+                    break;
+                }
             }
+
+            // =====================================
+
+            else if (!strcmp(comando, "utiliz"))
+            {
+
+                if (arg_num > 1 || strcmp(comando, buffer))
+                {
+                    printf("[SERVIDOR] [ERRO] >> '%s' não aceita argumentos.\n", comando);
+                    comando_valido = 0;
+                }
+                else
+                {
+                    strcpy(pc.comando, comando);
+                    comando_valido = 1;
+                    break;
+                }
+            }
+
+            // =====================================
+
+            else if (!strcmp(comando, "frota"))
+            {
+
+                if (arg_num > 1 || strcmp(comando, buffer))
+                {
+                    printf("[SERVIDOR] [ERRO] >> '%s' não aceita argumentos.\n", comando);
+                    comando_valido = 0;
+                }
+                else
+                {
+                    strcpy(pc.comando, comando);
+                    comando_valido = 1;
+                    break;
+                }
+            }
+
+            // =====================================
+
+            else if (!strcmp(comando, "cancelar"))
+            {
+                if (arg_num == 1 && strcmp(comando, buffer))
+                {
+                    printf("[SERVIDOR] [ERRO] >> O argumento '<id>' deve ser numérico.\n");
+                    comando_valido = 0;
+                }
+                else if (arg_num > 2)
+                {
+                    printf("[SERVIDOR] [ERRO] >> '%s' tem demasiados argumentos!\n", comando);
+                    comando_valido = 0;
+                }
+                else if (arg_num < 2)
+                {
+                    printf("[SERVIDOR] [ERRO] >> Falta argumento: '<id>'!\n");
+                    comando_valido = 0;
+                }
+                else
+                {
+                    strcpy(pc.comando, comando);
+                    pc.id_servico = id;
+                    comando_valido = 1;
+                }
+            }
+
+            // =====================================
+
+            else if (!strcmp(comando, "km"))
+            {
+
+                if (arg_num > 1 || strcmp(comando, buffer))
+                {
+                    printf("[SERVIDOR] [ERRO] >> '%s' não aceita argumentos.\n", comando);
+                    comando_valido = 0;
+                }
+                else
+                {
+                    strcpy(pc.comando, comando);
+                    comando_valido = 1;
+                    break;
+                }
+            }
+
+            // =====================================
+
+            else if (!strcmp(comando, "hora"))
+            {
+
+                if (arg_num > 1 || strcmp(comando, buffer))
+                {
+                    printf("[SERVIDOR] [ERRO] >> '%s' não aceita argumentos.\n", comando);
+                    comando_valido = 0;
+                }
+                else
+                {
+                    strcpy(pc.comando, comando);
+                    comando_valido = 1;
+                    break;
+                }
+            }
+
+            // =====================================
+
             else
             {
-                // Verifica comando executado
-                if (strcmp(pc.comando, "agendar") == 0)
-                {
-                    printf("Comando Recebido: %s\n", pc.comando);
-                    printf("Hora Recebida: %d\n", pc.hora);
-                    printf("Origem Recebida: %s\n", pc.origem);
-                    printf("Distancia Recebida: %d\n", pc.distancia);
-
-                    // Envia a resposta ao cliente
-                    snprintf(rs.msg, sizeof(rs.msg), "[SERVIDOR] AGENDAMENTO RECEBIDO");
-                }
-                if (strcmp(pc.comando, "consultar") == 0)
-                {
-                    printf("Comando Recebido: %s\n", pc.comando);
-
-                    // Envia a resposta ao cliente
-                    snprintf(rs.msg, sizeof(rs.msg), "[SERVIDOR] CONSULTA RECEBIDA");
-                }
-                if (strcmp(pc.comando, "cancelar") == 0)
-                {
-                    printf("Comando Recebido: %s\n", pc.comando);
-                    
-                    // Necessário reformular por causa do array de servicos
-                    //printf("ID Recebido: %d\n", svc.id_servico);
-
-                    // Envia a resposta ao cliente
-                    snprintf(rs.msg, sizeof(rs.msg), "[SERVIDOR] CANCELAMENTO RECEBIDO");
-                }
-                // Será removido porque o cliente não é suposto terminar o servidor
-                // Apenas está para fins de teste!
-                if (strcmp(pc.comando, "terminar") == 0)
-                {
-                    printf("Comando Recebido: %s\n", pc.comando);
-
-                    // Envia a resposta ao cliente
-                    printf("O cliente %s com o pid %d terminou o programa!\n", pc.username, clientes[posicao_pid]);
-                }
+                printf("[SERVIDOR] [ERRO] >> Comando '%s' inválido ou desconhecido!\n", comando);
+                comando_valido = 0;
             }
-            n = write(fd_cli, &rs, sizeof(RESPOSTA_SERVER));
-            printf("Comando Enviado: %s\n", rs.msg);
+        }
 
-            // Fecha o FIFO do cliente
-            close(fd_cli);
-        } */
+        // =====================================
+
+        // Fica à espera de pedidos
+        // TODO: PRECISA DE REFORMULAÇÃO!!!
+        /*do
+        {
+            n = read(fd, &pc, sizeof(PEDIDO_CLIENTE));
+            if (n == -1)
+            {
+                printf("Erro ao ler do FIFO 'controlador'");
+                return 1;
+            }
+
+            if (n == sizeof(PEDIDO_CLIENTE))
+            {
+                printf("Recebi %d bytes... do cliente %d\n", n, pc.pid_cliente);
+
+                // =====================================
+
+                // Verifica se existe espaço para o utilizador ou se ele ja existe
+                /* for (posicao_pid = -1, livre = -1, i = 0; i < NCLIENTES; i++)
+                {
+                    // Verifica se o utilizador ja existe
+                    if (clientes[i] == pc.pid_cliente)
+                        posicao_pid = i;
+
+                    // Verifica se existe espaço no array
+                    // Guarda o primeiro espaço livre que encontra
+                    if (livre == -1 && clientes[i] == -1)
+                        livre = i;
+                }
+
+                // Se não existe não existe no array mas há uma espaço livre, adiciona ao array
+                if (posicao_pid == -1 && livre != -1)
+                {
+                    posicao_pid = livre;
+                    clientes[posicao_pid] = pc.pid_cliente;
+                }
+                // Se nao existe e nao tem espaço livre, avisa o utilizador e não adiciona
+                if (posicao_pid == -1 && livre == -1)
+                {
+                    snprintf(rs.msg, sizeof(rs.msg), "[SERVIDOR] Não existe espaço para o utilizador!");
+                    n = write(fd, &rs, sizeof(RESPOSTA_SERVER));
+                    continue;
+                }
+
+                // Se existe e o comando dado no cliente for 'terminar', remove o utilizador
+                if (posicao_pid != -1 && (strcmp(pc.comando, "terminar") == 0))
+                {
+                    clientes[posicao_pid] = -1;
+                    continue;
+                } */
+
+        // =====================================
+
+        // No str_pid coloca o PID do utilizador formatado
+        /* sprintf(str_pid, CLI_FIFO, clientes[posicao_pid]);
+        // Abre o FIFO especifico do cliente
+        fd_cli = open(str_pid, O_WRONLY);
+        if (fd_cli < 0)
+        {
+            printf("[SERVIDOR] Erro ao abrir o FIFO 'cli_%d'\n", pc.pid_cliente);
+            snprintf(rs.msg, sizeof(rs.msg), "[SERVIDOR] Erro ao abrir o FIFO 'cli_%d'\n", pc.pid_cliente);
+        }
+        else
+        {
+            // Verifica comando executado
+            if (strcmp(pc.comando, "agendar") == 0)
+            {
+                printf("Comando Recebido: %s\n", pc.comando);
+                printf("Hora Recebida: %d\n", pc.hora);
+                printf("Origem Recebida: %s\n", pc.origem);
+                printf("Distancia Recebida: %d\n", pc.distancia);
+
+                // Envia a resposta ao cliente
+                snprintf(rs.msg, sizeof(rs.msg), "[SERVIDOR] AGENDAMENTO RECEBIDO");
+            }
+            if (strcmp(pc.comando, "consultar") == 0)
+            {
+                printf("Comando Recebido: %s\n", pc.comando);
+
+                // Envia a resposta ao cliente
+                snprintf(rs.msg, sizeof(rs.msg), "[SERVIDOR] CONSULTA RECEBIDA");
+            }
+            if (strcmp(pc.comando, "cancelar") == 0)
+            {
+                printf("Comando Recebido: %s\n", pc.comando);
+
+                // Necessário reformular por causa do array de servicos
+                //printf("ID Recebido: %d\n", svc.id_servico);
+
+                // Envia a resposta ao cliente
+                snprintf(rs.msg, sizeof(rs.msg), "[SERVIDOR] CANCELAMENTO RECEBIDO");
+            }
+            // Será removido porque o cliente não é suposto terminar o servidor
+            // Apenas está para fins de teste!
+            if (strcmp(pc.comando, "terminar") == 0)
+            {
+                printf("Comando Recebido: %s\n", pc.comando);
+
+                // Envia a resposta ao cliente
+                printf("O cliente %s com o pid %d terminou o programa!\n", pc.username, clientes[posicao_pid]);
+            }
+        }
+        n = write(fd_cli, &rs, sizeof(RESPOSTA_SERVER));
+        printf("Comando Enviado: %s\n", rs.msg);
+
+        // Fecha o FIFO do cliente
+        close(fd_cli);
+    } */
 
         // =====================================
 
@@ -257,15 +434,15 @@ int main(int argc, char *argv[])
         // {
         //     printf("CLIENTES[%d] = %d\n", i, clientes[i]);
         // }
-    //} while (strcmp(pc.comando, "terminar") != 0); */
+        //} while (strcmp(pc.comando, "terminar") != 0); */
 
-    // =====================================
+        // =====================================
 
-    pthread_join(thread_1, NULL);
-    pthread_join(thread_2, NULL);
-    pthread_join(thread_3, NULL);
+        pthread_join(thread_1, NULL);
+        pthread_join(thread_2, NULL);
+        pthread_join(thread_3, NULL);
 
-    pthread_mutex_destroy(&mutex);
+        pthread_mutex_destroy(&mutex);
 
-    // =====================================
-}
+        // =====================================
+    }

@@ -37,22 +37,23 @@ void terminarCliente(int s)
 // Está sempre à escuta de mensagens do servidor controlador
 void *recebe_msg_servidor(void *arg)
 {
-    TDADOSTHREAD *tdt = (TDADOSTHREAD *)arg;
+    TDADOSTHREAD *tdt_cli = (TDADOSTHREAD *)arg;
     RESPOSTA_SERVER rs;
-    while (tdt -> continua) {
-        read (tdt -> fd, &rs, sizeof(rs));
-        printf("[SERVIDOR] [MSG] >> %s\n", rs.msg);
-        fflush(stdout);
-    }
-    /* RESPOSTA_SERVER rs;
-    while (read(fd_cli, &rs, sizeof(rs)) > 0)
+    ssize_t n;
+    while ((n = read(tdt_cli->fd, &rs, sizeof(rs))) > 0)
     {
-        printf("[SERVIDOR] [MSG] >> %s\n", rs.msg);
-        fflush(stdout);
-    } */
+        if (n == sizeof(rs))
+        {
+            printf("[SERVIDOR] [MSG] >> %s\n", rs.msg);
+            fflush(stdout);
+        }
+    }
+    printf("[SERVIDOR] >> FIFO fechado\n");
 
     return NULL;
 }
+
+// =====================================
 
 void mostraComandos()
 {
@@ -67,8 +68,12 @@ void mostraComandos()
     printf("|_______________________________________________________________________________|\n");
 }
 
+// =====================================
+
 int main(int argc, char *argv[])
 {
+    // =====================================
+
     // Check Inicial ao iniciar o CLiente
     setbuf(stdout, NULL);
 
@@ -96,10 +101,12 @@ int main(int argc, char *argv[])
     mkfifo(cli_fifo, 0640);
 
     TDADOSTHREAD dt;
-    dt.fd = open(cli_fifo, O_RDONLY | O_NONBLOCK);
+    dt.fd = open(cli_fifo, O_RDWR);
+    dt.continua = 1;
+
     if (dt.fd == -1)
     {
-        printf("[CLIENTE] [ERRO] >> Erro ao abrir o fifo do cliente (PID %d)!", getpid());
+        perror("[CLIENTE] Erro ao abrir FIFO");
         exit(1);
     }
 
@@ -119,7 +126,7 @@ int main(int argc, char *argv[])
     strcpy(pc.origem, "");
     pc.distancia = 0;
 
-    // Envia pedido ao Servidor
+    // Envia notificação ao Servidor
     int fd_srv = open(SRV_FIFO, O_WRONLY);
     if (fd_srv == -1)
         terminarCliente(0);
@@ -133,14 +140,14 @@ int main(int argc, char *argv[])
     printf("            [ O CLIENTE FOI INICIADO ]        \n");
     printf("            Bem-vindo, %s (PID %d)        \n", pc.username, pc.pid_cliente);
     printf("| ============================================ |\n");
-    
+
     mostraComandos();
     printf("[CLIENTE] << ");
 
     // =====================================
 
     // Input e Validação do Utilizador
-    char buffer[128], comando[20], origem[20];
+    char buffer[128], comando[20], origem[20], extra[20];
     int arg_hora_id = 0, distancia = 0, comando_valido = 0;
     while (fgets(buffer, sizeof(buffer), stdin))
     {
@@ -149,7 +156,9 @@ int main(int argc, char *argv[])
         buffer[strcspn(buffer, "\n")] = '\0';
 
         // Converte para argumentos e guarda argumentos válidos em arg_num
-        int arg_num = sscanf(buffer, "%s %d %s %d", comando, &arg_hora_id, origem, &distancia);
+        int arg_num = sscanf(buffer, "%s %d %s %d %s", comando, &arg_hora_id, origem, &distancia, extra);
+
+        // =====================================
 
         if (arg_num <= 0)
         {
@@ -165,6 +174,8 @@ int main(int argc, char *argv[])
                 printf("[CLIENTE] << ");
                 comando_valido = 0;
             }
+
+            // =====================================
 
             else if (!strcmp(comando, "terminar"))
             {
@@ -182,6 +193,8 @@ int main(int argc, char *argv[])
                 }
             }
 
+            // =====================================
+
             else if (!strcmp(comando, "consultar"))
             {
                 if (arg_num > 1 || strcmp(comando, buffer))
@@ -195,6 +208,8 @@ int main(int argc, char *argv[])
                     comando_valido = 1;
                 }
             }
+
+            // =====================================
 
             else if (!strcmp(comando, "cancelar"))
             {
@@ -221,6 +236,8 @@ int main(int argc, char *argv[])
                 }
             }
 
+            // =====================================
+
             else if (!strcmp(comando, "agendar"))
             {
                 if (arg_num == 1 && strcmp(comando, buffer))
@@ -228,14 +245,12 @@ int main(int argc, char *argv[])
                     printf("[CLIENTE] [ERRO] >> O argumento '<hora>' deve ser numérico.\n");
                     comando_valido = 0;
                 }
-                else if (arg_num == 3 && isNumber(origem))
+                else if ((arg_num == 3 || arg_num == 4) && isNumber(origem))
                 {
-                    int number;
-                    printf("%d", number = isNumber(origem));
                     printf("[CLIENTE] [ERRO] >> O argumento '<origem>' deve ser uma string.\n");
                     comando_valido = 0;
                 }
-                else if (arg_num == 3 && strcmp(comando, buffer))
+                else if (arg_num == 3)
                 {
                     printf("[CLIENTE] [ERRO] >> O argumento '<distancia>' deve ser numérico.\n");
                     comando_valido = 0;
@@ -269,6 +284,9 @@ int main(int argc, char *argv[])
                     comando_valido = 1;
                 }
             }
+
+            // =====================================
+
             else
             {
                 printf("[CLIENTE] [ERRO] >> Comando '%s' inválido ou desconhecido!\n", comando);
@@ -276,13 +294,7 @@ int main(int argc, char *argv[])
             }
         }
 
-        printf("Argumentos: %d\n", arg_num);
-        printf("Comando: %s\n", pc.comando);
-        printf("Hora: %d\n", pc.hora);
-        printf("ID: %d\n", pc.id_servico);
-        printf("Origem: %s\n", pc.origem);
-        printf("Distancia: %d\n", pc.distancia);
-        printf("Comando Valido: %d\n", comando_valido);
+        // =====================================
 
         // Envio do pedido ao controlador
         if (comando_valido == 1)
@@ -295,10 +307,11 @@ int main(int argc, char *argv[])
             }
             write(fd_srv, &pc, sizeof(PEDIDO_CLIENTE)); */
             printf("[SERVIDOR] << [CLIENTE]\nEnviei pedido '%s' ao controlador\n", pc.comando);
-            // close(fd_srv);
+            /* close(fd_srv); */
         }
 
         // =====================================
+
         printf("\n[CLIENTE] << ");
     }
     terminarCliente(0);

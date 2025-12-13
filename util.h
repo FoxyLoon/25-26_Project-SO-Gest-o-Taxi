@@ -93,7 +93,7 @@ typedef struct {
 
 typedef struct {
     int fd;
-    pthread_mutex_t * mut;
+    pthread_mutex_t *mut;
     int continua;
 } TDADOSTHREAD;
 
