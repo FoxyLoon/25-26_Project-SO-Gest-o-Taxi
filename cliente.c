@@ -104,7 +104,7 @@ int main(int argc, char *argv[])
 
     if (dt.fd == -1)
     {
-        perror("[CLIENTE] Erro ao abrir FIFO");
+        perror("[CLIENTE] Erro ao abrir FIFO do cliente");
         exit(1);
     }
 
@@ -297,15 +297,15 @@ int main(int argc, char *argv[])
         // Envio do pedido ao controlador
         if (comando_valido == 1)
         {
-            /* fd_srv = open(SRV_FIFO, O_WRONLY);
+            fd_srv = open(SRV_FIFO, O_WRONLY);
             if (fd_srv == -1)
             {
                 printf("[CLIENTE] [ERRO] >> Erro ao abrir o fifo do controlador\n");
                 exit(1);
             }
-            write(fd_srv, &pc, sizeof(PEDIDO_CLIENTE)); */
+            write(fd_srv, &pc, sizeof(PEDIDO_CLIENTE));
             printf("[SERVIDOR] << [CLIENTE]\nEnviei pedido '%s' ao controlador\n", pc.comando);
-            /* close(fd_srv); */
+            close(fd_srv);
         }
 
         // =====================================

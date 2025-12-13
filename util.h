@@ -77,7 +77,7 @@ typedef struct {
     int pid_veiculo;
     int hora_agendada;
     char local_origem[TAM];
-    int distancia_percurso;
+    int distancia_percorrida_percentagem;
 } SERVICO;
 
 typedef struct {
@@ -98,7 +98,7 @@ int servidor_ativo = 1;
 int CLIENTES_ATIVOS = 0;
 int SERVICOS_ATIVOS = 0;
 
-pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t mutex;
 
 // =====================================
 
