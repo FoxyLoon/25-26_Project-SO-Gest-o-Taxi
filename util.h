@@ -73,7 +73,7 @@ typedef struct {
     int id_servico;
     char username[TAM];
     int pid_cliente;
-    int status_servico; // 0 = Agendado | 1 = Em Execução | 2 = Cancelado | 3 = Finalizado 
+    int status_servico; // 0 = Sem Agendamento | 1 = Agendado | 2 = Em Execução | 3 = Cancelado | 4 = Finalizado
     int pid_veiculo;
     int hora_agendada;
     char local_origem[TAM];

@@ -16,47 +16,6 @@
 
 #include "util.h"
 
-void *tempo(void *arg)
-{
-    // fazer com sleep
-    // lança thread para o veiculo (thread dentro de thread)
-    printf("Ola thread1\n");
-    return NULL;
-}
-
-// serao 10 veiculos
-void *veiculo(void *arg)
-{
-}
-
-// Processo comandos do cliente
-void *cliente(void *arg)
-{
-    int fd_srv = open(SRV_FIFO, O_RDWR);
-    PEDIDO_CLIENTE pc;
-    printf("[CLIENTE] [MSG] >> %s\n", pc.comando);
-    while ((read(fd_srv, &pc, sizeof(pc)) > 0) && servidor_ativo == 1)
-    {
-        pthread_mutex_lock(&mutex);
-        printf("[CLIENTE] [MSG] >> %s\n", pc.comando);
-        pthread_mutex_unlock(&mutex);
-    }
-
-    if (servidor_ativo != 1) {
-        close(fd_srv);
-    }
-    return NULL;
-}
-
-// Processa comandos do administrador
-void *administrador(void *arg)
-{
-    /* pthread_mutex_lock(tdt_srv->mut);
-
-    pthread_mutex_unlock(tdt_srv->mut); */
-    return NULL;
-}
-
 // Envia repostas ao respetivo cliente pelo pid do cliente
 void envia_msg_cliente(int pid_cli, char *mensagem)
 {
@@ -78,7 +37,7 @@ void terminarServidor(int s)
     unlink(SRV_FIFO);
     int i;
     for (i = 0; i < SERVICOS_ATIVOS; i++)
-        if (servicos[i].status_servico == 1)
+        if (servicos[i].status_servico == 1 || servicos[i].status_servico == 2)
             kill(servicos[i].pid_veiculo, SIGKILL);
     for (i = 0; i < CLIENTES_ATIVOS; i++)
         if (clientes[i].pid_cliente)
@@ -87,6 +46,93 @@ void terminarServidor(int s)
     printf("        [ O SERVIDOR FOI ENCERRADO ]        \n");
     printf("| ======================================== |\n");
     exit(0);
+}
+
+void *tempo(void *arg)
+{
+    // fazer com sleep
+    // lança thread para o veiculo (thread dentro de thread)
+    printf("Ola thread1\n");
+    return NULL;
+}
+
+// serao 10 veiculos
+void *veiculo(void *arg)
+{
+    
+    /* pthread_mutex_lock(tdt_srv->mut);
+
+    pthread_mutex_unlock(tdt_srv->mut); */
+}
+
+// Processo comandos do cliente
+void *cliente(void *arg)
+{
+    int fd_srv = open(SRV_FIFO, O_RDWR);
+    PEDIDO_CLIENTE pc;
+    printf("[CLIENTE] [MSG] >> %s\n", pc.comando);
+    while ((read(fd_srv, &pc, sizeof(pc)) > 0) && servidor_ativo == 1)
+    {
+        pthread_mutex_lock(&mutex);
+        if (!strcmp(pc.comando, "novo_cliente"))
+        {
+            if (CLIENTES_ATIVOS < NCLIENTES)
+            {
+                strcpy(clientes[CLIENTES_ATIVOS].username, pc.username);
+                clientes[CLIENTES_ATIVOS].pid_cliente = pc.pid_cliente;
+                
+                printf("[SERVIDOR] >> O utilizador %s (PID %d) entrou.\n", clientes[CLIENTES_ATIVOS].username, clientes[CLIENTES_ATIVOS].pid_cliente);
+                printf("[SERVIDOR] << ");
+                CLIENTES_ATIVOS++;
+                fflush(stdout);
+                envia_msg_cliente(pc.pid_cliente, "Conectado com o servidor!");
+            }
+            else
+            {
+                envia_msg_cliente(pc.pid_cliente, "O Servidor está cheio!");
+                kill(pc.pid_cliente, SIGINT);
+            }
+        }
+        else if (!strcmp(pc.comando, "terminar"))
+        {
+            if (CLIENTES_ATIVOS > 0)
+            {
+                int i;
+                for (i = 0; i < CLIENTES_ATIVOS; i++)
+                {
+                    if (clientes[i].pid_cliente == pc.pid_cliente)
+                    {
+                        clientes[i].pid_cliente = 0;
+                        CLIENTES_ATIVOS--;
+                        printf("[SERVIDOR] >> O utilizador %s (PID %d) saiu.\n", pc.username, pc.pid_cliente);
+                        printf("[SERVIDOR] << ");
+                        fflush(stdout);
+                        break;
+                    }
+                }
+            }
+            else
+            {
+                envia_msg_cliente(pc.pid_cliente, "O Servidor n o tem mais clientes conectados.");
+            }
+        }
+        pthread_mutex_unlock(&mutex);
+    }
+
+    if (servidor_ativo != 1)
+    {
+        close(fd_srv);
+    }
+    return NULL;
+}
+
+// Processa comandos do administrador
+void *administrador(void *arg)
+{
+    /* pthread_mutex_lock(tdt_srv->mut);
+
+    pthread_mutex_unlock(tdt_srv->mut); */
+    return NULL;
 }
 
 void mostraComandosServidor()
@@ -229,15 +275,15 @@ int main(int argc, char *argv[])
                         {
                             printf("|===================================================================\n");
                             printf("|> Serviço %d\n", servicos[i].id_servico);
-                            printf("|\tCliente: %s | PID: %d\n|\n", servicos[i].username, servicos[i].pid_cliente);
-                            printf("|\tEstado do Serviço: %s (Agendado, Em Progresso)\n", servicos[i].status_servico == 0 ? "Agendado" : servicos[i].status_servico == 1 ? "Em Progresso"
-                                                                                                                                     : servicos[i].status_servico == 2   ? "Cancelado"
-                                                                                                                                     : servicos[i].status_servico == 3   ? "Finalizado"
-                                                                                                                                                                         : "Desconhecido");
-                            printf("|\tID Veículo Designado: %d\n", servicos[i].pid_veiculo);
-                            printf("|\tHora Agendada: %d\n", servicos[i].hora_agendada);
-                            printf("|\tOrigem: %s\n", servicos[i].local_origem);
-                            printf("|\tDistância percorrida: %d %%\n", servicos[i].distancia_percorrida_percentagem);
+                            printf("|- Cliente: %s | PID: %d\n|\n", servicos[i].username, servicos[i].pid_cliente);
+                            printf("|- Estado do Serviço: %s \n", servicos[i].status_servico == 0 ? "Sem serviços agendados" : servicos[i].status_servico == 1 ? "Agendado"
+                                                                                                                           : servicos[i].status_servico == 2   ? "Em Progresso"
+                                                                                                                           : servicos[i].status_servico == 3   ? "Cancelado"
+                                                                                                                                                               : "Finalizado");
+                            printf("|- ID Veículo Designado: %d\n", servicos[i].pid_veiculo);
+                            printf("|- Hora Agendada: %d\n", servicos[i].hora_agendada);
+                            printf("|- Origem: %s\n", servicos[i].local_origem);
+                            printf("|- Distância percorrida: %d %%\n", servicos[i].distancia_percorrida_percentagem);
                             printf("|===================================================================\n\n");
                         }
                     }
@@ -267,7 +313,14 @@ int main(int argc, char *argv[])
                         printf("\n========== CLIENTES ATIVOS ==========\n\n");
                         for (int i = 0; i < CLIENTES_ATIVOS; i++)
                         {
-                            printf("\t- Cliente: %s | PID: %d\n", servicos[i].username, servicos[i].pid_cliente);
+
+                            
+                            printf("- Cliente: %s | PID: %d", clientes[i].username, clientes[i].pid_cliente);
+                            printf(" | Estado: %s \n", servicos[i].status_servico == 1   ? "Agendado"
+                                                       : servicos[i].status_servico == 2 ? "Em Progresso"
+                                                       : servicos[i].status_servico == 3 ? "Cancelado"
+                                                       : servicos[i].status_servico == 4 ? "Finalizado"
+                                                                                         : "Sem serviços agendados");
                         }
                     }
                 }
@@ -294,10 +347,7 @@ int main(int argc, char *argv[])
                         printf("\n========== VEÍCULOS EM MOVIMENTO ==========\n\n");
                         for (int i = 0; i < SERVICOS_ATIVOS; i++)
                         {
-                            printf("\t- Serviço %d | Veiculo PID %d: %d%% | Estado do Veiculo: %s\n", servicos[i].id_servico, servicos[i].pid_veiculo, servicos[i].distancia_percorrida_percentagem, servicos[i].status_servico == 0 ? "A caminho do cliente." : servicos[i].status_servico == 1 ? "A transportar cliente."
-                                                                                                                                                                                                                                                             : servicos[i].status_servico == 2   ? "O transporte foi cancelado - A voltar."
-                                                                                                                                                                                                                                                             : servicos[i].status_servico == 3   ? "O transporte foi finalizado - A voltar."
-                                                                                                                                                                                                                                                                                                 : "Desconhecido");
+                            printf("\t- Serviço %d | Veiculo PID %d: %d%%", servicos[i].id_servico, servicos[i].pid_veiculo, servicos[i].distancia_percorrida_percentagem);
                         }
                     }
                 }
@@ -335,30 +385,30 @@ int main(int argc, char *argv[])
                         for (int i = 0; i < SERVICOS_ATIVOS; i++)
                         {
                             // Verifica se o serviço ja foi cancelado
-                            if (servicos[id].id_servico == id && servicos[i].status_servico == 2)
+                            if (servicos[id].id_servico == id && servicos[i].status_servico == 3)
                             {
                                 printf("[SERVIDOR] [INFO] >> Serviço %d ja foi cancelado.\n", id);
                                 break;
                             }
                             // Verifica se o seriço já foi finalizado
-                            else if (servicos[id].id_servico == id && servicos[i].status_servico == 3)
+                            else if (servicos[id].id_servico == id && servicos[i].status_servico == 4)
                             {
                                 printf("[SERVIDOR] [INFO] >> Serviço %d ja foi finalizado.\n", id);
                                 break;
                             }
                             // Se id = 0, cancela todos os serviços (agendado ou em execução)
-                            else if (id == 0 && servicos[i].status_servico < 2)
+                            else if (id == 0 && servicos[i].status_servico > 0 && servicos[i].status_servico < 3)
                             {
                                 kill(servicos[i].pid_veiculo, SIGUSR1);
-                                servicos[i].status_servico = 2;
+                                servicos[i].status_servico = 3;
                                 conta_cancelado++;
                                 break;
                             }
                             // Se id != 0, cancela o serviço (agendado ou em execução) especificado pedido pelo administrador
-                            else if (servicos[i].id_servico == id && servicos[i].status_servico < 2)
+                            else if (servicos[i].id_servico == id && servicos[i].status_servico > 0 && servicos[i].status_servico < 3)
                             {
                                 kill(servicos[i].pid_veiculo, SIGUSR1);
-                                servicos[i].status_servico = 2;
+                                servicos[i].status_servico = 3;
                                 conta_cancelado++;
                                 printf("[SERVIDOR] [INFO] >> Serviço %d cancelado com sucesso.\n", id);
                                 break;
@@ -418,133 +468,131 @@ int main(int argc, char *argv[])
         pthread_mutex_unlock(&mutex);
     }
 
-        // =====================================
+    // =====================================
 
-        // Fica à espera de pedidos
-        // TODO: PRECISA DE REFORMULAÇÃO!!!
-        /*do
+    // Fica à espera de pedidos
+    // TODO: PRECISA DE REFORMULAÇÃO!!!
+    /*do
+    {
+        n = read(fd, &pc, sizeof(PEDIDO_CLIENTE));
+        if (n == -1)
         {
-            n = read(fd, &pc, sizeof(PEDIDO_CLIENTE));
-            if (n == -1)
-            {
-                printf("Erro ao ler do FIFO 'controlador'");
-                return 1;
-            }
-
-            if (n == sizeof(PEDIDO_CLIENTE))
-            {
-                printf("Recebi %d bytes... do cliente %d\n", n, pc.pid_cliente);
-
-                // =====================================
-
-                // Verifica se existe espaço para o utilizador ou se ele ja existe
-                /* for (posicao_pid = -1, livre = -1, i = 0; i < NCLIENTES; i++)
-                {
-                    // Verifica se o utilizador ja existe
-                    if (clientes[i] == pc.pid_cliente)
-                        posicao_pid = i;
-
-                    // Verifica se existe espaço no array
-                    // Guarda o primeiro espaço livre que encontra
-                    if (livre == -1 && clientes[i] == -1)
-                        livre = i;
-                }
-
-                // Se não existe não existe no array mas há uma espaço livre, adiciona ao array
-                if (posicao_pid == -1 && livre != -1)
-                {
-                    posicao_pid = livre;
-                    clientes[posicao_pid] = pc.pid_cliente;
-                }
-                // Se nao existe e nao tem espaço livre, avisa o utilizador e não adiciona
-                if (posicao_pid == -1 && livre == -1)
-                {
-                    snprintf(rs.msg, sizeof(rs.msg), "[SERVIDOR] Não existe espaço para o utilizador!");
-                    n = write(fd, &rs, sizeof(RESPOSTA_SERVER));
-                    continue;
-                }
-
-                // Se existe e o comando dado no cliente for 'terminar', remove o utilizador
-                if (posicao_pid != -1 && (strcmp(pc.comando, "terminar") == 0))
-                {
-                    clientes[posicao_pid] = -1;
-                    continue;
-                } */
-
-        // =====================================
-
-        // No str_pid coloca o PID do utilizador formatado
-        /* sprintf(str_pid, CLI_FIFO, clientes[posicao_pid]);
-        // Abre o FIFO especifico do cliente
-        fd_cli = open(str_pid, O_WRONLY);
-        if (fd_cli < 0)
-        {
-            printf("[SERVIDOR] Erro ao abrir o FIFO 'cli_%d'\n", pc.pid_cliente);
-            snprintf(rs.msg, sizeof(rs.msg), "[SERVIDOR] Erro ao abrir o FIFO 'cli_%d'\n", pc.pid_cliente);
+            printf("Erro ao ler do FIFO 'controlador'");
+            return 1;
         }
-        else
+
+        if (n == sizeof(PEDIDO_CLIENTE))
         {
-            // Verifica comando executado
-            if (strcmp(pc.comando, "agendar") == 0)
+            printf("Recebi %d bytes... do cliente %d\n", n, pc.pid_cliente);
+
+            // =====================================
+
+            // Verifica se existe espaço para o utilizador ou se ele ja existe
+            /* for (posicao_pid = -1, livre = -1, i = 0; i < NCLIENTES; i++)
             {
-                printf("Comando Recebido: %s\n", pc.comando);
-                printf("Hora Recebida: %d\n", pc.hora);
-                printf("Origem Recebida: %s\n", pc.origem);
-                printf("Distancia Recebida: %d\n", pc.distancia);
+                // Verifica se o utilizador ja existe
+                if (clientes[i] == pc.pid_cliente)
+                    posicao_pid = i;
 
-                // Envia a resposta ao cliente
-                snprintf(rs.msg, sizeof(rs.msg), "[SERVIDOR] AGENDAMENTO RECEBIDO");
+                // Verifica se existe espaço no array
+                // Guarda o primeiro espaço livre que encontra
+                if (livre == -1 && clientes[i] == -1)
+                    livre = i;
             }
-            if (strcmp(pc.comando, "consultar") == 0)
+
+            // Se não existe não existe no array mas há uma espaço livre, adiciona ao array
+            if (posicao_pid == -1 && livre != -1)
             {
-                printf("Comando Recebido: %s\n", pc.comando);
-
-                // Envia a resposta ao cliente
-                snprintf(rs.msg, sizeof(rs.msg), "[SERVIDOR] CONSULTA RECEBIDA");
+                posicao_pid = livre;
+                clientes[posicao_pid] = pc.pid_cliente;
             }
-            if (strcmp(pc.comando, "cancelar") == 0)
+            // Se nao existe e nao tem espaço livre, avisa o utilizador e não adiciona
+            if (posicao_pid == -1 && livre == -1)
             {
-                printf("Comando Recebido: %s\n", pc.comando);
-
-                // Necessário reformular por causa do array de servicos
-                //printf("ID Recebido: %d\n", svc.id_servico);
-
-                // Envia a resposta ao cliente
-                snprintf(rs.msg, sizeof(rs.msg), "[SERVIDOR] CANCELAMENTO RECEBIDO");
+                snprintf(rs.msg, sizeof(rs.msg), "[SERVIDOR] Não existe espaço para o utilizador!");
+                n = write(fd, &rs, sizeof(RESPOSTA_SERVER));
+                continue;
             }
-            // Será removido porque o cliente não é suposto terminar o servidor
-            // Apenas está para fins de teste!
-            if (strcmp(pc.comando, "terminar") == 0)
+
+            // Se existe e o comando dado no cliente for 'terminar', remove o utilizador
+            if (posicao_pid != -1 && (strcmp(pc.comando, "terminar") == 0))
             {
-                printf("Comando Recebido: %s\n", pc.comando);
+                clientes[posicao_pid] = -1;
+                continue;
+            } */
 
-                // Envia a resposta ao cliente
-                printf("O cliente %s com o pid %d terminou o programa!\n", pc.username, clientes[posicao_pid]);
-            }
+    // =====================================
+
+    // No str_pid coloca o PID do utilizador formatado
+    /* sprintf(str_pid, CLI_FIFO, clientes[posicao_pid]);
+    // Abre o FIFO especifico do cliente
+    fd_cli = open(str_pid, O_WRONLY);
+    if (fd_cli < 0)
+    {
+        printf("[SERVIDOR] Erro ao abrir o FIFO 'cli_%d'\n", pc.pid_cliente);
+        snprintf(rs.msg, sizeof(rs.msg), "[SERVIDOR] Erro ao abrir o FIFO 'cli_%d'\n", pc.pid_cliente);
+    }
+    else
+    {
+        // Verifica comando executado
+        if (strcmp(pc.comando, "agendar") == 0)
+        {
+            printf("Comando Recebido: %s\n", pc.comando);
+            printf("Hora Recebida: %d\n", pc.hora);
+            printf("Origem Recebida: %s\n", pc.origem);
+            printf("Distancia Recebida: %d\n", pc.distancia);
+
+            // Envia a resposta ao cliente
+            snprintf(rs.msg, sizeof(rs.msg), "[SERVIDOR] AGENDAMENTO RECEBIDO");
         }
-        n = write(fd_cli, &rs, sizeof(RESPOSTA_SERVER));
-        printf("Comando Enviado: %s\n", rs.msg);
+        if (strcmp(pc.comando, "consultar") == 0)
+        {
+            printf("Comando Recebido: %s\n", pc.comando);
 
-        // Fecha o FIFO do cliente
-        close(fd_cli);
-    } */
+            // Envia a resposta ao cliente
+            snprintf(rs.msg, sizeof(rs.msg), "[SERVIDOR] CONSULTA RECEBIDA");
+        }
+        if (strcmp(pc.comando, "cancelar") == 0)
+        {
+            printf("Comando Recebido: %s\n", pc.comando);
 
-        // =====================================
+            // Necessário reformular por causa do array de servicos
+            //printf("ID Recebido: %d\n", svc.id_servico);
 
-        // Mostra os utilizadores ativos
-        // printf("\nUTILIZADORES ATIVOS:\n");
-        // for (i = 0; i < NCLIENTES; i++)
-        // {
-        //     printf("CLIENTES[%d] = %d\n", i, clientes[i]);
-        // }
-        //} while (strcmp(pc.comando, "terminar") != 0); */
+            // Envia a resposta ao cliente
+            snprintf(rs.msg, sizeof(rs.msg), "[SERVIDOR] CANCELAMENTO RECEBIDO");
+        }
+        // Será removido porque o cliente não é suposto terminar o servidor
+        // Apenas está para fins de teste!
+        if (strcmp(pc.comando, "terminar") == 0)
+        {
+            printf("Comando Recebido: %s\n", pc.comando);
 
-        // =====================================
+            // Envia a resposta ao cliente
+            printf("O cliente %s com o pid %d terminou o programa!\n", pc.username, clientes[posicao_pid]);
+        }
+    }
+    n = write(fd_cli, &rs, sizeof(RESPOSTA_SERVER));
+    printf("Comando Enviado: %s\n", rs.msg);
 
-        
+    // Fecha o FIFO do cliente
+    close(fd_cli);
+} */
 
-        // =====================================
-    
+    // =====================================
+
+    // Mostra os utilizadores ativos
+    // printf("\nUTILIZADORES ATIVOS:\n");
+    // for (i = 0; i < NCLIENTES; i++)
+    // {
+    //     printf("CLIENTES[%d] = %d\n", i, clientes[i]);
+    // }
+    //} while (strcmp(pc.comando, "terminar") != 0); */
+
+    // =====================================
+
+    // =====================================
+
     pthread_mutex_destroy(&mutex);
     terminarServidor(0);
 }

@@ -18,11 +18,15 @@ void terminarCliente(int s)
 
     if (s == SIGUSR1)
     {
-        printf("SAIDA 1");
+        printf("\n[SERVIDOR] >> O servidor encerrou!\n");
+    }
+    else if (s == SIGINT)
+    {
+        printf("\n\n[CLIENTE] >> O cliente encerrou forçadamente!\n");
     }
     else
     {
-        printf("SAIDA 2");
+        printf("\n[CLIENTE] >> O cliente encerrou!\n");
     }
 
     printf("\n| ============================================ |\n");
@@ -41,7 +45,11 @@ void *recebe_msg_servidor(void *arg)
     {
         if (n == sizeof(rs))
         {
-            printf("[SERVIDOR] [MSG] >> %s\n", rs.msg);
+            printf("\n[SERVIDOR] [INFO] >> %s\n", rs.msg);
+            if (strcmp(rs.msg, "O Servidor está cheio!"))
+            {
+                printf("[CLIENTE] << ");
+            }
             fflush(stdout);
         }
     }
@@ -54,16 +62,14 @@ void *recebe_msg_servidor(void *arg)
 
 void mostraComandos()
 {
-    printf("_________________________________________________________________________________\n");
-    printf("|                                                                               |\n");
-    printf("|	[ COMANDOS DISPONIVEIS ]                [ DESCRIÇÕES ]                      |\n");
-    printf("|                                                                               |\n");
-    printf("|	> ajuda                                 » Mostra este painel de comandos;   |\n");
-    printf("|	> agendar <hora> <origem> <distancia>   » Agenda um servico;                |\n");
-    printf("|	> consultar                             » Consulta servicos agendados       |\n");
-    printf("|	> cancelar <id_servico>                 » Cancela um servico pelo seu id    |\n");
-    printf("|	> terminar                              » Termina a aplicacao do Cliente    |\n");
-    printf("|_______________________________________________________________________________|\n");
+    printf("________________________________________________________________________\n\n");
+    printf("[ COMANDOS DISPONIVEIS ]                [ DESCRIÇÕES ]\n\n");
+    printf("> ajuda                                 » Mostra este painel de comandos\n");
+    printf("> agendar <hora> <origem> <distancia>   » Agenda um servico\n");
+    printf("> consultar                             » Consulta servicos agendados\n");
+    printf("> cancelar <id_servico>                 » Cancela um servico pelo seu id\n");
+    printf("> terminar                              » Termina a aplicacao do Cliente\n");
+    printf("________________________________________________________________________\n");
 }
 
 // =====================================
@@ -136,11 +142,9 @@ int main(int argc, char *argv[])
     // Apresentação ao utilizador
     printf("| ============================================ |\n");
     printf("            [ O CLIENTE FOI INICIADO ]        \n");
-    printf("            Bem-vindo, %s (PID %d)        \n", pc.username, pc.pid_cliente);
     printf("| ============================================ |\n");
-
-    mostraComandos();
-    printf("[CLIENTE] << ");
+    printf("\n- Bem-vindo, %s (PID %d)\n", pc.username, pc.pid_cliente);
+    printf("- Dica: use o comando 'ajuda'\n");
 
     // =====================================
 
@@ -169,7 +173,6 @@ int main(int argc, char *argv[])
             if (!strcmp(comando, "ajuda"))
             {
                 mostraComandos();
-                printf("[CLIENTE] << ");
                 comando_valido = 0;
             }
 
@@ -186,6 +189,14 @@ int main(int argc, char *argv[])
                 else
                 {
                     strcpy(pc.comando, comando);
+
+                    // Envia notificação ao Servidor
+                    fd_srv = open(SRV_FIFO, O_WRONLY);
+                    if (fd_srv == -1)
+                        terminarCliente(0);
+                    write(fd_srv, &pc, sizeof(pc));
+                    close(fd_srv);
+
                     comando_valido = 1;
                     break;
                 }
