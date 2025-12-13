@@ -48,23 +48,12 @@
 
 // =====================================
 
-int km_total = 0;
-int hora_simulada = 0;
-int servidor_ativo = 1;
-int CLIENTES_ATIVOS = 0;
-int SERVICOS_ATIVOS = 0;
-
-pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
-
-// =====================================
-
 // Estruturas
 typedef struct 
 {
     char username[TAM];
     int pid_cliente;
 } CLIENTE;
-
 
 typedef struct {
     int pid_cliente;
@@ -82,13 +71,13 @@ typedef struct {
 
 typedef struct {
     int id_servico;
-    int status_servico;
-    int pid_cliente;
-    int pid_veiculo;
     char username[TAM];
-    int hora;
-    char origem[TAM];
-    int distancia;
+    int pid_cliente;
+    int status_servico; // 0 = Agendado | 1 = Em Execução | 2 = Cancelado | 3 = Finalizado 
+    int pid_veiculo;
+    int hora_agendada;
+    char local_origem[TAM];
+    int distancia_percurso;
 } SERVICO;
 
 typedef struct {
@@ -99,9 +88,22 @@ typedef struct {
 
 // =====================================
 
-// Quantidades de Clientes e Servicos
+// Variaveis Globais Servidor
 CLIENTE clientes[NCLIENTES];
 SERVICO servicos[NSERVICOS];
+
+int km_total = 0;
+int hora_simulada = 0;
+int servidor_ativo = 1;
+int CLIENTES_ATIVOS = 0;
+int SERVICOS_ATIVOS = 0;
+
+pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+
+// =====================================
+
+// Variaveis Globais Cliente
+char cli_fifo[30];
 
 // =====================================
 // Funções Globais

@@ -62,7 +62,7 @@ void envia_msg_cliente(int pid_cli, char *mensagem)
     }
 }
 
-void terminar_servidor(int s)
+void terminarServidor(int s)
 {
 
     unlink(SRV_FIFO);
@@ -86,6 +86,7 @@ void mostraComandosServidor()
     printf("|                                                                                       |\n");
     printf("|   [ COMANDOS DISPONIVEIS ]    [ DESCRIÇÕES ]                                          |\n");
     printf("|                                                                                       |\n");
+    printf("|   > ajuda                     » Mostra este painel de comandos;                       |\n");
     printf("|   > listar                    » Mostra todos os servicos agendados                    |\n");
     printf("|   > utiliz                    » Mostra utilizadores conectados                        |\n");
     printf("|   > frota                     » Mostra percentagem de viagem dos veiculos             |\n");
@@ -99,13 +100,13 @@ void mostraComandosServidor()
 
 int main(int argc, char *argv[])
 {
+    signal(SIGINT, terminarServidor);
     int n, i, fd, fd_cli, idx;
     int posicao_pid, livre;
     char str_pid[20];
 
     PEDIDO_CLIENTE pc;
     RESPOSTA_SERVER rs;
-    SERVICO svc;
 
     // =====================================
 
@@ -138,13 +139,15 @@ int main(int argc, char *argv[])
     printf("            [ O SERVIDOR FOI INICIADO ]         \n");
     printf("| ============================================ |\n");
     printf("\n| ===== Bem-vindo, Administrador (PID %d) ===== |\n", getpid());
+    
     mostraComandosServidor();
+    printf("[SERVIDOR] << ");
 
     // =====================================
 
     // Input e Validação do Administraador
     char buffer[128], comando[20], extra[20];
-    int id = 0, distancia = 0, comando_valido = 0;
+    int id = 0/* , distancia = 0, comando_valido = 0 */;
     while (fgets(buffer, sizeof(buffer), stdin))
     {
         // =====================================
@@ -159,17 +162,21 @@ int main(int argc, char *argv[])
         if (arg_num <= 0)
         {
             printf("[SERVIDOR] >> Comando vazio!\n");
-            comando_valido = 0;
         }
 
         if (arg_num > 0)
         {
-            if (!strcmp(comando, "help"))
-            {
-                mostraComandos();
-                printf("[SERVIDOR] << ");
-                comando_valido = 0;
-            }
+            if (!strcmp(comando, "ajuda"))
+                if (arg_num > 1 || strcmp(comando, buffer))
+                {
+                    int number = strcmp(comando, buffer);
+                    printf("[SERVIDOR] [ERRO] >> '%s' não aceita argumentos.\n", comando);
+                }
+                else
+                {
+                    mostraComandosServidor();
+                    printf("[SERVIDOR] << ");
+                }
 
             // =====================================
 
@@ -179,12 +186,10 @@ int main(int argc, char *argv[])
                 if (arg_num > 1 || strcmp(comando, buffer))
                 {
                     printf("[SERVIDOR] [ERRO] >> '%s' não aceita argumentos.\n", comando);
-                    comando_valido = 0;
                 }
                 else
                 {
                     strcpy(pc.comando, comando);
-                    comando_valido = 1;
                     break;
                 }
             }
@@ -197,13 +202,23 @@ int main(int argc, char *argv[])
                 if (arg_num > 1 || strcmp(comando, buffer))
                 {
                     printf("[SERVIDOR] [ERRO] >> '%s' não aceita argumentos.\n", comando);
-                    comando_valido = 0;
                 }
                 else
                 {
-                    strcpy(pc.comando, comando);
-                    comando_valido = 1;
-                    break;
+                    printf("[SERVIDOR] >> A listar todos os serviços agendados...\n");
+                    sleep(2);
+                    printf("\n========== SERVIÇOS ==========\n\n");
+                    for (int i = 0; i < SERVICOS_ATIVOS; i++){
+                        printf("|===================================================================\n");
+                        printf("|> Serviço %d\n", servicos[i].id_servico);
+                        printf("|\tCliente: %s | PID: %d\n|\n", servicos[i].username, servicos[i].pid_cliente);
+                        printf("|\tEstado do Serviço: %s (Agendado, Em Progresso)\n", servicos[i].status_servico == 0 ? "Agendado" : servicos[i].status_servico == 1 ? "Em Progresso" : servicos[i].status_servico == 2 ? "Cancelado" : servicos[i].status_servico == 3 ? "Finalizado" : "Desconhecido");
+                        printf("|\tID Veículo Designado: %d\n", servicos[i].pid_veiculo);
+                        printf("|\tHora Agendada: %d\n", servicos[i].hora_agendada);
+                        printf("|\tOrigem: %s\n", servicos[i].local_origem);
+                        printf("|\tDistância a percorrer: %d\n", servicos[i].distancia_percurso);
+                        printf("|===================================================================\n\n");
+                    }
                 }
             }
 
@@ -215,13 +230,15 @@ int main(int argc, char *argv[])
                 if (arg_num > 1 || strcmp(comando, buffer))
                 {
                     printf("[SERVIDOR] [ERRO] >> '%s' não aceita argumentos.\n", comando);
-                    comando_valido = 0;
                 }
                 else
                 {
-                    strcpy(pc.comando, comando);
-                    comando_valido = 1;
-                    break;
+                    printf("[SERVIDOR] >> A listar todos os clientes ativos...\n");
+                    sleep(2);
+                    printf("\n========== CLIENTES ATIVOS ==========\n\n");
+                    for (int i = 0; i < CLIENTES_ATIVOS; i++){
+                        printf("\t[%d] - Cliente: %s (PID %d)\n", i, servicos[i].username, servicos[i].pid_cliente);
+                    }
                 }
             }
 
@@ -233,13 +250,14 @@ int main(int argc, char *argv[])
                 if (arg_num > 1 || strcmp(comando, buffer))
                 {
                     printf("[SERVIDOR] [ERRO] >> '%s' não aceita argumentos.\n", comando);
-                    comando_valido = 0;
+                    /* comando_valido = 0; */
                 }
                 else
                 {
-                    strcpy(pc.comando, comando);
-                    comando_valido = 1;
-                    break;
+                    printf(" ||| Comando não funcional |||\n");
+                    /* strcpy(pc.comando, comando); */
+                    /* comando_valido = 1; */
+                    /* break; */
                 }
             }
 
@@ -250,23 +268,24 @@ int main(int argc, char *argv[])
                 if (arg_num == 1 && strcmp(comando, buffer))
                 {
                     printf("[SERVIDOR] [ERRO] >> O argumento '<id>' deve ser numérico.\n");
-                    comando_valido = 0;
+                    /* comando_valido = 0; */
                 }
                 else if (arg_num > 2)
                 {
                     printf("[SERVIDOR] [ERRO] >> '%s' tem demasiados argumentos!\n", comando);
-                    comando_valido = 0;
+                    /* comando_valido = 0; */
                 }
                 else if (arg_num < 2)
                 {
                     printf("[SERVIDOR] [ERRO] >> Falta argumento: '<id>'!\n");
-                    comando_valido = 0;
+                    /* comando_valido = 0; */
                 }
                 else
                 {
-                    strcpy(pc.comando, comando);
-                    pc.id_servico = id;
-                    comando_valido = 1;
+                    printf(" ||| Comando não funcional |||\n");
+                    /* strcpy(pc.comando, comando);
+                    pc.id_servico = id; */
+                    /* comando_valido = 1; */
                 }
             }
 
@@ -278,13 +297,10 @@ int main(int argc, char *argv[])
                 if (arg_num > 1 || strcmp(comando, buffer))
                 {
                     printf("[SERVIDOR] [ERRO] >> '%s' não aceita argumentos.\n", comando);
-                    comando_valido = 0;
                 }
                 else
                 {
-                    strcpy(pc.comando, comando);
-                    comando_valido = 1;
-                    break;
+                    printf("|\tTotal de Kilómetros percorridos: %d\n", km_total);
                 }
             }
 
@@ -296,13 +312,10 @@ int main(int argc, char *argv[])
                 if (arg_num > 1 || strcmp(comando, buffer))
                 {
                     printf("[SERVIDOR] [ERRO] >> '%s' não aceita argumentos.\n", comando);
-                    comando_valido = 0;
                 }
                 else
                 {
-                    strcpy(pc.comando, comando);
-                    comando_valido = 1;
-                    break;
+                    printf("|\tHora Simulada do Servidor: %dh\n", hora_simulada);
                 }
             }
 
@@ -311,9 +324,10 @@ int main(int argc, char *argv[])
             else
             {
                 printf("[SERVIDOR] [ERRO] >> Comando '%s' inválido ou desconhecido!\n", comando);
-                comando_valido = 0;
             }
         }
+
+        printf("\n[SERVIDOR] << ");
 
         // =====================================
 
@@ -446,3 +460,6 @@ int main(int argc, char *argv[])
 
         // =====================================
     }
+
+    terminarServidor(0);
+}

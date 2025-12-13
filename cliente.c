@@ -12,9 +12,6 @@
 
 #include "util.h"
 
-// Variaveis Globais
-char cli_fifo[30];
-
 void terminarCliente(int s)
 {
     unlink(cli_fifo);
@@ -61,6 +58,7 @@ void mostraComandos()
     printf("|                                                                               |\n");
     printf("|	[ COMANDOS DISPONIVEIS ]                [ DESCRIÇÕES ]                      |\n");
     printf("|                                                                               |\n");
+    printf("|	> ajuda                                 » Mostra este painel de comandos;   |\n");
     printf("|	> agendar <hora> <origem> <distancia>   » Agenda um servico;                |\n");
     printf("|	> consultar                             » Consulta servicos agendados       |\n");
     printf("|	> cancelar <id_servico>                 » Cancela um servico pelo seu id    |\n");
@@ -168,7 +166,7 @@ int main(int argc, char *argv[])
 
         if (arg_num > 0)
         {
-            if (!strcmp(comando, "help"))
+            if (!strcmp(comando, "ajuda"))
             {
                 mostraComandos();
                 printf("[CLIENTE] << ");
