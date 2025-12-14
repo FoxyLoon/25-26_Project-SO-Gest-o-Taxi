@@ -36,9 +36,9 @@ void terminarServidor(int s)
     servidor_ativo = 0;
     unlink(SRV_FIFO);
     int i;
-    for (i = 0; i < SERVICOS_ATIVOS; i++)
+    for (i = 1; i < SERVICOS_ATIVOS + 1; i++)
         if (servicos[i].status_servico == 1 || servicos[i].status_servico == 2)
-            kill(servicos[i].pid_veiculo, SIGKILL);
+            kill(servicos[i].pid_veiculo, SIGUSR1);
     for (i = 0; i < CLIENTES_ATIVOS; i++)
         if (clientes[i].pid_cliente)
             kill(clientes[i].pid_cliente, SIGUSR1);
@@ -66,11 +66,9 @@ void *veiculo(void *arg)
 
     pthread_mutex_unlock(tdt_srv->mut); */
 
-    //iniciar
-    //informar o cliente
+    // iniciar
+    // informar o cliente
     //
-    
-
 }
 
 // Processo comandos do cliente
@@ -89,8 +87,9 @@ void *cliente(void *arg)
         ssize_t n = read(fd_srv, &pc, sizeof(pc));
         if (n > 0)
         {
+
             pthread_mutex_lock(&mutex);
-            printf("[SERVIDOR] [COMANDO RECEBIDO]");
+            printf("\n[SERVIDOR] [COMANDO RECEBIDO]");
             pthread_mutex_unlock(&mutex);
 
             // Processar o comando recebido
@@ -135,20 +134,38 @@ void *cliente(void *arg)
             }
             else if (!strcmp(pc.comando, "agendar"))
             {
-                servicos[SERVICOS_ATIVOS].id_servico = SERVICOS_ATIVOS;
+                servicos[SERVICOS_ATIVOS].id_servico = ++SERVICOS_ATIVOS;
                 strcpy(servicos[SERVICOS_ATIVOS].username, pc.username);
                 servicos[SERVICOS_ATIVOS].pid_cliente = pc.pid_cliente;
                 servicos[SERVICOS_ATIVOS].status_servico = 1;
                 servicos[SERVICOS_ATIVOS].hora_agendada = pc.hora;
                 strcpy(servicos[SERVICOS_ATIVOS].local_origem, pc.origem);
                 servicos[SERVICOS_ATIVOS].distancia_pedida = pc.distancia;
-                
+
                 char msg[50];
                 sprintf(msg, "Serviço nº %d agendado!", servicos[SERVICOS_ATIVOS].id_servico);
                 envia_msg_cliente(pc.pid_cliente, msg);
-
-                SERVICOS_ATIVOS++;
             }
+            else if (!strcmp(pc.comando, "consultar"))
+            {
+                char msg[50];
+                sprintf(msg, "Mensagem!");
+                envia_msg_cliente(pc.pid_cliente, msg);
+            }
+            else if (!strcmp(pc.comando, "cancelar"))
+            {
+                for (int i = 1; i < SERVICOS_ATIVOS; i++)
+                {
+                    if (servicos[i].id_servico == pc.id_servico && servicos[i].status_servico < 3 && servicos[i].status_servico > 0)
+                    {
+                        servicos[i].status_servico = 3;
+                        char msg[50];
+                        sprintf(msg, "Serviço nº %d cancelado!", servicos[i].id_servico);
+                        envia_msg_cliente(pc.pid_cliente, msg);
+                    }
+                }
+            }
+
             else
             {
                 printf("[SERVIDOR] >> Comando desconhecido: %s\n", pc.comando);
@@ -158,6 +175,9 @@ void *cliente(void *arg)
         {
             perror("[SERVIDOR] Erro ao ler do FIFO");
         }
+
+        printf("\n[SERVIDOR] << ");
+        fflush(stdout);
     }
 
     close(fd_srv);
@@ -166,25 +186,24 @@ void *cliente(void *arg)
 
 void mostraComandosServidor()
 {
-    printf("_________________________________________________________________________________________\n");
-    printf("|                                                                                       |\n");
-    printf("|   [ COMANDOS DISPONIVEIS ]    [ DESCRIÇÕES ]                                          |\n");
-    printf("|                                                                                       |\n");
-    printf("|   > ajuda                     » Mostra este painel de comandos;                       |\n");
-    printf("|   > listar                    » Mostra todos os servicos agendados                    |\n");
-    printf("|   > utiliz                    » Mostra utilizadores conectados                        |\n");
-    printf("|   > frota                     » Mostra percentagem de viagem dos veiculos             |\n");
-    printf("|   > cancelar <id_servico>     » Cancela um servico pelo seu id (0 = todos)            |\n");
-    printf("|   > km                        » Mostra total de km percorridos por todos os veiculos  |\n");
-    printf("|   > hora                      » Mostra a hora simulada atual do servidor              |\n");
-    printf("|   > terminar                  » Termina o Servidor e todos os Clientes ligados        |\n");
-    printf("|_______________________________________________________________________________________|\n");
+    printf("_______________________________________________________________________________________\n\n");
+    printf("[ COMANDOS DISPONIVEIS ]    [ DESCRIÇÕES ]\n\n");
+    printf("> ajuda                     » Mostra este painel de comandos\n");
+    printf("> listar                    » Mostra todos os servicos agendados\n");
+    printf("> utiliz                    » Mostra utilizadores conectados\n");
+    printf("> frota                     » Mostra percentagem de viagem dos veiculos\n");
+    printf("> cancelar <id_servico>     » Cancela um servico pelo seu id (0 = todos)\n");
+    printf("> km                        » Mostra total de km percorridos por todos os veiculos\n");
+    printf("> hora                      » Mostra a hora simulada atual do servidor\n");
+    printf("> terminar                  » Termina o Servidor e todos os Clientes ligados\n");
+    printf("_______________________________________________________________________________________\n");
     fflush(stdout);
 }
 
 int main(int argc, char *argv[])
 {
     signal(SIGINT, terminarServidor);
+    signal(SIGUSR1, terminarServidor);
     int n, i, fd, fd_cli, idx;
     int posicao_pid, livre;
     char str_pid[20];
@@ -302,7 +321,7 @@ int main(int argc, char *argv[])
                 }
                 else
                 {
-                    printf("[SERVIDOR] >> A listar todos os serviços agendados...\n");
+                    printf("[SERVIDOR] [ESPERA SIMULADA] >> A listar todos os serviços agendados...\n");
                     sleep(1);
                     if (SERVICOS_ATIVOS == 0)
                     {
@@ -313,20 +332,20 @@ int main(int argc, char *argv[])
                     {
                         printf("[SERVIDOR] [INFO] >> Existem %d serviços agendados.\n", SERVICOS_ATIVOS);
                         printf("\n========== SERVIÇOS ==========\n\n");
-                        for (int i = 0; i < SERVICOS_ATIVOS; i++)
+                        for (int i = 1; i < SERVICOS_ATIVOS + 1; i++)
                         {
-                            printf("|===================================================================\n");
-                            printf("|> Serviço %d\n", servicos[i].id_servico);
-                            printf("|- Cliente: %s | PID: %d\n|\n", servicos[i].username, servicos[i].pid_cliente);
-                            printf("|- Estado do Serviço: %s \n", servicos[i].status_servico == 0 ? "Sem serviços agendados" : servicos[i].status_servico == 1 ? "Agendado"
-                                                                                                                           : servicos[i].status_servico == 2   ? "Em Progresso"
-                                                                                                                           : servicos[i].status_servico == 3   ? "Cancelado"
-                                                                                                                                                               : "Finalizado");
-                            printf("|- ID Veículo Designado: %d\n", servicos[i].pid_veiculo);
-                            printf("|- Hora Agendada: %d\n", servicos[i].hora_agendada);
-                            printf("|- Origem: %s\n", servicos[i].local_origem);
-                            printf("|- Distância pedida: %d km\n", servicos[i].distancia_pedida);
-                            printf("|===================================================================\n\n");
+                            printf("========================================\n");
+                            printf("> Serviço %d\n", servicos[i].id_servico);
+                            printf("\t- Cliente: %s | PID: %d\n", servicos[i].username, servicos[i].pid_cliente);
+                            printf("\t- Estado do Serviço: %s \n", servicos[i].status_servico == 0 ? "Sem serviços agendados" : servicos[i].status_servico == 1 ? "Agendado"
+                                                                                                                            : servicos[i].status_servico == 2   ? "Em Progresso"
+                                                                                                                            : servicos[i].status_servico == 3   ? "Cancelado"
+                                                                                                                                                                : "Finalizado");
+                            printf("\t- ID Veículo Designado: %d\n", servicos[i].pid_veiculo);
+                            printf("\t- Hora Agendada: %d\n", servicos[i].hora_agendada);
+                            printf("\t- Origem: %s\n", servicos[i].local_origem);
+                            printf("\t- Distância pedida: %d km\n", servicos[i].distancia_pedida);
+                            printf("========================================\n\n");
                         }
                     }
                 }
@@ -343,7 +362,7 @@ int main(int argc, char *argv[])
                 }
                 else
                 {
-                    printf("[SERVIDOR] >> A listar todos os clientes ativos...\n");
+                    printf("[SERVIDOR] [ESPERA SIMULADA] >> A listar todos os clientes ativos...\n");
                     sleep(1);
                     if (CLIENTES_ATIVOS <= 0)
                     {
@@ -353,14 +372,14 @@ int main(int argc, char *argv[])
                     {
                         printf("[SERVIDOR] [INFO] >> Existem %d clientes ativos.\n", CLIENTES_ATIVOS);
                         printf("\n========== CLIENTES ATIVOS ==========\n\n");
-                        for (int i = 0; i < CLIENTES_ATIVOS; i++)
+                        for (int i = 0, j = i + 1; i < CLIENTES_ATIVOS; i++)
                         {
 
                             printf("- Cliente: %s | PID: %d", clientes[i].username, clientes[i].pid_cliente);
-                            printf(" | Estado: %s \n", servicos[i].status_servico == 1   ? "Agendado"
-                                                       : servicos[i].status_servico == 2 ? "Em Progresso"
-                                                       : servicos[i].status_servico == 3 ? "Cancelado"
-                                                       : servicos[i].status_servico == 4 ? "Finalizado"
+                            printf(" | Estado: %s \n", servicos[j].status_servico == 1   ? "Agendado"
+                                                       : servicos[j].status_servico == 2 ? "Em Progresso"
+                                                       : servicos[j].status_servico == 3 ? "Cancelado"
+                                                       : servicos[j].status_servico == 4 ? "Finalizado"
                                                                                          : "Sem serviços agendados");
                         }
                     }
@@ -378,6 +397,8 @@ int main(int argc, char *argv[])
                 }
                 else
                 {
+                    printf("[SERVIDOR] [ESPERA SIMULADA] >> A listar todos os VEÍCULOS em movimento...\n");
+                    sleep(1);
                     if (SERVICOS_ATIVOS == 0)
                     {
                         printf("[SERVIDOR] [INFO] >> Não há veículos em movimento.\n");
@@ -386,9 +407,9 @@ int main(int argc, char *argv[])
                     {
                         printf("[SERVIDOR] [INFO] >> Existem %d veículos em movimento.\n", SERVICOS_ATIVOS);
                         printf("\n========== VEÍCULOS EM MOVIMENTO ==========\n\n");
-                        for (int i = 0; i < SERVICOS_ATIVOS; i++)
+                        for (int i = 1; i < SERVICOS_ATIVOS + 1; i++)
                         {
-                            printf("\t- Serviço %d | Veiculo PID %d: %d%%", servicos[i].id_servico, servicos[i].pid_veiculo, servicos[i].distancia_percorrida_percentagem);
+                            printf("- Serviço %d | Veiculo PID %d: %d%%\n", servicos[i].id_servico, servicos[i].pid_veiculo, servicos[i].distancia_percorrida_percentagem);
                         }
                     }
                 }
@@ -416,43 +437,39 @@ int main(int argc, char *argv[])
                 }
                 else
                 {
+                    printf("[SERVIDOR] [ESPERA SIMULADA] >> A preparar cancelamentos de serviços...\n");
+                    sleep(1);
                     if (SERVICOS_ATIVOS == 0)
                     {
-                        printf("[SERVIDOR] [INFO] >> Nenhum há serviços ativos para cancelar.\n");
+                        printf("[SERVIDOR] [INFO] >> Não há serviços ativos para cancelar.\n");
                     }
                     else
                     {
                         int conta_cancelado = 0;
-                        for (int i = 0; i < SERVICOS_ATIVOS; i++)
+                        for (int i = 1; i < SERVICOS_ATIVOS + 1; i++)
                         {
                             // Verifica se o serviço ja foi cancelado
                             if (servicos[id].id_servico == id && servicos[i].status_servico == 3)
                             {
                                 printf("[SERVIDOR] [INFO] >> Serviço %d ja foi cancelado.\n", id);
-                                break;
                             }
                             // Verifica se o seriço já foi finalizado
                             else if (servicos[id].id_servico == id && servicos[i].status_servico == 4)
                             {
                                 printf("[SERVIDOR] [INFO] >> Serviço %d ja foi finalizado.\n", id);
-                                break;
                             }
                             // Se id = 0, cancela todos os serviços (agendado ou em execução)
                             else if (id == 0 && servicos[i].status_servico > 0 && servicos[i].status_servico < 3)
                             {
-                                kill(servicos[i].pid_veiculo, SIGUSR1);
                                 servicos[i].status_servico = 3;
                                 conta_cancelado++;
-                                break;
                             }
                             // Se id != 0, cancela o serviço (agendado ou em execução) especificado pedido pelo administrador
                             else if (servicos[i].id_servico == id && servicos[i].status_servico > 0 && servicos[i].status_servico < 3)
                             {
-                                kill(servicos[i].pid_veiculo, SIGUSR1);
                                 servicos[i].status_servico = 3;
                                 conta_cancelado++;
                                 printf("[SERVIDOR] [INFO] >> Serviço %d cancelado com sucesso.\n", id);
-                                break;
                             }
                         }
                         // Para id = 0, apresenta uma mensagem no final de todos os serviços cancelados
@@ -478,7 +495,9 @@ int main(int argc, char *argv[])
                 }
                 else
                 {
-                    printf("|\tTotal de kilómetros percorridos por todos os veículos: %d km\n", km_total);
+                    printf("[SERVIDOR] [ESPERA SIMULADA] >> A calcular distância total percorrida por todos os veículos...\n");
+                    sleep(1);
+                    printf("- Total de kilómetros percorridos por todos os veículos: %d km\n", km_total);
                 }
             }
 
@@ -493,7 +512,9 @@ int main(int argc, char *argv[])
                 }
                 else
                 {
-                    printf("|\tHora Simulada do Servidor: %d h\n", hora_simulada);
+                    printf("[SERVIDOR] [ESPERA SIMULADA] >> A obter hora do servidor...\n");
+                    sleep(1);
+                    printf("- Hora Simulada do Servidor: %d h\n", hora_simulada);
                 }
             }
 
