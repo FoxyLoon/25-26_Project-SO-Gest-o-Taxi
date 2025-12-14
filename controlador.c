@@ -57,46 +57,102 @@ void *tempo(void *arg)
         pthread_mutex_lock(&mutex);
         hora_simulada = (hora_simulada + 1) % 24;
 
-        pthread_cond_broadcast(&cond_hora);
+        /*         pthread_cond_broadcast(&cond_hora);
+         */
         pthread_mutex_unlock(&mutex);
     }
     return NULL;
 }
 
 // serao 10 veiculos
+// Thread de gestão dos veículos
 void *veiculo(void *arg)
 {
-
-    int i = 0;
-
-    pthread_mutex_lock(&mutex);
+    int i;
+    pid_t pid_wait;
+    int status;
 
     while (servidor_ativo)
     {
-        while (servidor_ativo &&
-               !(servicos[i].status_servico == 1 &&
-                 servicos[i].hora_agendada == hora_simulada))
+        pthread_mutex_lock(&mutex);
+
+        // Percorre os serviços agendados
+        for (i = 0; i < NSERVICOS; i++)
         {
-            pthread_cond_wait(&cond_hora, &mutex);
+            // Se o serviço está agendado (status = 1) e chegou a hora
+            if (servicos[i].status_servico == 1 && servicos[i].hora_agendada <= hora_simulada)
+            {
+                pid_t pid_veiculo = fork();
+
+                if (pid_veiculo == -1)
+                {
+                    perror("fork");
+                }
+                else if (pid_veiculo == 0)
+                {
+                    // PROCESSO FILHO (VEÍCULO)
+                    char distancia[20];
+                    char indice[20];
+                    char pid_cliente[20];
+
+                    sprintf(distancia, "%d", servicos[i].distancia_pedida);
+                    sprintf(indice, "%d", servicos[i].id_servico);
+                    sprintf(pid_cliente, "%d", servicos[i].pid_cliente);
+
+                    execl("./veiculo", "veiculo",
+                          distancia,
+                          servicos[i].local_origem,
+                          indice,
+                          pid_cliente,
+                          NULL);
+
+                    perror("execl");
+                    exit(1);
+                }
+                else
+                {
+                    // PROCESSO PAI (CONTROLADOR)
+                    servicos[i].pid_veiculo = pid_veiculo;
+                    servicos[i].status_servico = 2; // Em execução
+
+                    printf("[SERVIDOR] >> Veículo lançado (PID %d) para o serviço %d\n",
+                           pid_veiculo, servicos[i].id_servico);
+                }
+            }
         }
-
-        if (!servidor_ativo)
-            break;
-
-        char dist[16], idx[16];
-        snprintf(dist, sizeof(dist), "%d", servicos[i].distancia_pedida);
-        snprintf(idx, sizeof(idx), "%d", i);
 
         pthread_mutex_unlock(&mutex);
 
-        execl("./veiculo", "veiculo",
-              dist, servicos[i].local_origem, idx, NULL);
+        // Verifica se algum veículo terminou
+        pid_wait = waitpid(-1, &status, WNOHANG);
 
-        pthread_mutex_lock(&mutex);
-        i = (i + 1) % NSERVICOS;
+        if (pid_wait > 0)
+        {
+            pthread_mutex_lock(&mutex);
+
+            // Encontra qual serviço corresponde ao processo que terminou
+            for (i = 0; i < NSERVICOS; i++)
+            {
+                if (servicos[i].pid_veiculo == pid_wait && servicos[i].status_servico == 2)
+                {
+                    servicos[i].status_servico = 4; // Finalizado
+
+                    // Adiciona km_total quando o serviço termina
+                    km_total += servicos[i].distancia_pedida;
+
+                    printf("[SERVIDOR] >> Serviço %d finalizado (Veículo PID %d terminou)\n",
+                           servicos[i].id_servico, pid_wait);
+                    printf("[SERVIDOR] >> KM totais: %d km\n", km_total);
+
+                    break;
+                }
+            }
+
+            pthread_mutex_unlock(&mutex);
+        }
+
+        sleep(1);
     }
-
-    pthread_mutex_unlock(&mutex);
 
     return NULL;
 }
@@ -344,9 +400,10 @@ int main(int argc, char *argv[])
     // =====================================
     pthread_mutex_init(&mutex, NULL);
 
-    pthread_t thread_1, thread_2;
+    pthread_t thread_1, thread_2, thread_3;
     pthread_create(&thread_1, 0, tempo, 0);
     pthread_create(&thread_2, 0, cliente, 0);
+    pthread_create(&thread_3, 0, veiculo, 0);
 
     // =====================================
 
