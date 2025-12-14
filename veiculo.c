@@ -20,14 +20,12 @@ int main(int argc, char *argv[])
     if (fd != -1)
     {
         RESPOSTA_SERVER r;
-        sprintf(r.msg, "Veiculo chegou em %s. Toca a andar...", orig);
+        sprintf(r.msg, "Veiculo chegou a %s. Toca a andar...", orig);
         write(fd, &r, sizeof(r));
         close(fd);
     }
 
-    char f[50];
-    sprintf(f, CLI_FIFO, pid);
-    int fd = open(f, O_WRONLY);
+    fd = open(f, O_WRONLY);
 
     if (fd != -1)
     {
