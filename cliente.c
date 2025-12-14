@@ -236,6 +236,7 @@ int main(int argc, char *argv[])
                 else
                 {
                     strcpy(pc.comando, comando);
+                    
                     comando_valido = 1;
                 }
             }
@@ -306,7 +307,7 @@ int main(int argc, char *argv[])
                     printf("[CLIENTE] [ERRO] >> Falta argumento: '<distancia>'!\n");
                     comando_valido = 0;
                 }
-                else if (arg_hora_id >= 0 && arg_hora_id < 24)
+                else if (arg_hora_id < 0 && arg_hora_id >= 24)
                 {
                     printf("[CLIENTE] [ERRO] >> O argumento '<hora>' deve estar entre 0 e 23, pois correspondem à hora do dia.\n");
                     comando_valido = 0;
