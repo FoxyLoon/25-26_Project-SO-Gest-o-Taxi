@@ -252,7 +252,12 @@ int main(int argc, char *argv[])
 
             else if (!strcmp(comando, "agendar"))
             {
-                if (arg_num == 1 && strcmp(comando, buffer))
+                if (arg_hora_id < 0 || arg_hora_id >= 24)
+                {
+                    printf("[CLIENTE] [ERRO] >> O argumento '<hora>' deve estar entre 0 e 23, pois correspondem à hora do dia.\n");
+                    comando_valido = 0;
+                }
+                else if (arg_num == 1 && strcmp(comando, buffer))
                 {
                     printf("[CLIENTE] [ERRO] >> O argumento '<hora>' deve ser numérico.\n");
                     comando_valido = 0;
@@ -285,11 +290,6 @@ int main(int argc, char *argv[])
                 else if (arg_num < 4)
                 {
                     printf("[CLIENTE] [ERRO] >> Falta argumento: '<distancia>'!\n");
-                    comando_valido = 0;
-                }
-                else if (arg_hora_id < 0 && arg_hora_id >= 24)
-                {
-                    printf("[CLIENTE] [ERRO] >> O argumento '<hora>' deve estar entre 0 e 23, pois correspondem à hora do dia.\n");
                     comando_valido = 0;
                 }
                 else

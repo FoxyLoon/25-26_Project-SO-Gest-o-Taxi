@@ -36,7 +36,7 @@
 // Definicoes
 #define NVEICULOS 10
 #define NCLIENTES 30
-#define NSERVICOS 3
+#define NSERVICOS 30
 
 // =====================================
 
