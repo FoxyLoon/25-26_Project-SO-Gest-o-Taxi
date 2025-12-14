@@ -119,7 +119,7 @@ void *cliente(void *arg)
         {
 
             pthread_mutex_lock(&mutex);
-            printf("\n[SERVIDOR] [COMANDO RECEBIDO]");
+            printf("\n[SERVIDOR] << [COMANDO RECEBIDO: %s] << [CLIENTE]\n", pc.comando);
             pthread_mutex_unlock(&mutex);
 
             // Processar o comando recebido
@@ -164,35 +164,119 @@ void *cliente(void *arg)
             }
             else if (!strcmp(pc.comando, "agendar"))
             {
-                servicos[SERVICOS_ATIVOS].id_servico = ++SERVICOS_ATIVOS;
-                strcpy(servicos[SERVICOS_ATIVOS].username, pc.username);
-                servicos[SERVICOS_ATIVOS].pid_cliente = pc.pid_cliente;
-                servicos[SERVICOS_ATIVOS].status_servico = 1;
-                servicos[SERVICOS_ATIVOS].hora_agendada = pc.hora;
-                strcpy(servicos[SERVICOS_ATIVOS].local_origem, pc.origem);
-                servicos[SERVICOS_ATIVOS].distancia_pedida = pc.distancia;
+                if (SERVICOS_ATIVOS < NSERVICOS)
+                {
+                    servicos[SERVICOS_ATIVOS].id_servico = ++SERVICOS_ATIVOS;
+                    strcpy(servicos[SERVICOS_ATIVOS].username, pc.username);
+                    servicos[SERVICOS_ATIVOS].pid_cliente = pc.pid_cliente;
+                    servicos[SERVICOS_ATIVOS].status_servico = 1;
+                    servicos[SERVICOS_ATIVOS].hora_agendada = pc.hora;
+                    strcpy(servicos[SERVICOS_ATIVOS].local_origem, pc.origem);
+                    servicos[SERVICOS_ATIVOS].distancia_pedida = pc.distancia;
 
-
-                char msg[50];
-                sprintf(msg, "Serviço nº %d agendado!", servicos[SERVICOS_ATIVOS].id_servico);
-                envia_msg_cliente(pc.pid_cliente, msg);
+                    char msg[50];
+                    sprintf(msg, "Serviço nº %d agendado!", servicos[SERVICOS_ATIVOS].id_servico);
+                    envia_msg_cliente(pc.pid_cliente, msg);
+                }
+                else
+                {
+                    envia_msg_cliente(pc.pid_cliente, "O Servidor está cheio e não pode lidar com mais serviços! Por favor, reinicie!");
+                }
             }
             else if (!strcmp(pc.comando, "consultar"))
             {
-                char msg[50];
-                sprintf(msg, "Mensagem!");
-                envia_msg_cliente(pc.pid_cliente, msg);
+                int encontrou_servicos = 0; // Flag para verificar se há serviços
+                for (int i = 1; i < SERVICOS_ATIVOS + 1; i++)
+                {
+                    usleep(100);
+                    if (servicos[i].pid_cliente == pc.pid_cliente)
+                    {
+                        encontrou_servicos = 1;
+                        char msg[1024];
+                        sprintf(msg, "[Serviço %d] >> Origem: %s | Distância: %d km | Hora: %d | Estado: %s",
+                                servicos[i].id_servico,
+                                servicos[i].local_origem,
+                                servicos[i].distancia_pedida,
+                                servicos[i].hora_agendada,
+                                servicos[i].status_servico == 0 ? "Sem serviços agendados" : servicos[i].status_servico == 1 ? "Agendado"
+                                                                                                                            : servicos[i].status_servico == 2   ? "Em Progresso"
+                                                                                                                            : servicos[i].status_servico == 3   ? "Cancelado"
+                                                                                                                             : servicos[i].status_servico == 4   ? "Finalizado"
+                                                                                                                             : servicos[i].status_servico == 5   ? "Cancelado"
+                                                                                                                                                                : "Desconhecido");
+                        envia_msg_cliente(pc.pid_cliente, msg);
+                    }
+                }
+
+                if (!encontrou_servicos)
+                {
+                    envia_msg_cliente(pc.pid_cliente, "Não há serviços agendados!");
+                }
             }
             else if (!strcmp(pc.comando, "cancelar"))
             {
-                for (int i = 1; i < SERVICOS_ATIVOS; i++)
+                if (SERVICOS_ATIVOS == 0)
                 {
-                    if (servicos[i].id_servico == pc.id_servico && servicos[i].status_servico < 3 && servicos[i].status_servico > 0)
+                    printf("[SERVIDOR] [INFO] >> Não há serviços ativos para cancelar.\n");
+                }
+                else
+                {
+                    int conta_cancelado = 0;
+                    for (int i = 1; i < SERVICOS_ATIVOS + 1; i++)
                     {
-                        servicos[i].status_servico = 3;
-                        char msg[50];
-                        sprintf(msg, "Serviço nº %d cancelado!", servicos[i].id_servico);
-                        envia_msg_cliente(pc.pid_cliente, msg);
+                        // Verifica se o serviço ja foi cancelado
+                        if (servicos[i].id_servico == pc.id_servico && servicos[i].status_servico == 3)
+                        {
+                            printf("[SERVIDOR] [INFO] >> Serviço %d ja foi cancelado.\n", pc.id_servico);
+                        }
+                        // Verifica se o seriço já foi finalizado
+                        else if (servicos[i].id_servico == pc.id_servico && servicos[i].status_servico == 4)
+                        {
+                            printf("[SERVIDOR] [INFO] >> Serviço %d ja foi finalizado.\n", pc.id_servico);
+                        }
+                        // Se id = 0, cancela todos os serviços (agendado ou em execução)
+                        else if (pc.id_servico == 0 && servicos[i].status_servico > 0 && servicos[i].status_servico < 3)
+                        {
+                            servicos[i].status_servico = 3;
+                            conta_cancelado++;
+                        }
+                        // Se id != 0, cancela o serviço (agendado ou em execução) especificado pedido pelo administrador
+                        else if (servicos[i].id_servico == pc.id_servico && servicos[i].status_servico > 0 && servicos[i].status_servico < 3)
+                        {
+                            servicos[i].status_servico = 3;
+                            conta_cancelado++;
+                            printf("[SERVIDOR] [INFO] >> Serviço %d cancelado com sucesso.\n", pc.id_servico);
+                        }
+                    }
+
+                    char mensagem[512];
+                    // Para id = 0, apresenta uma mensagem no final de todos os serviços cancelados
+                    if (conta_cancelado == 1)
+                    {
+                        for (int j = 1; j < SERVICOS_ATIVOS + 1; j++)
+                        {
+                            if ((pc.id_servico == 0 && servicos[j].status_servico == 3) ||
+                                (pc.id_servico != 0 && servicos[j].id_servico == pc.id_servico && servicos[j].status_servico == 3))
+                            {
+                                sprintf(mensagem, "Serviço %d cancelado pelo cliente.", pc.id_servico == 0 ? servicos[j].id_servico : pc.id_servico);
+                                envia_msg_cliente(servicos[j].pid_cliente, mensagem);
+                                servicos[j].status_servico = 5;
+                            }
+                        }
+                    }
+                    else if (conta_cancelado > 1)
+                    {
+                        printf("[SERVIDOR] [INFO] >> %d serviços cancelados com sucesso.\n", conta_cancelado);
+                        for (int j = 1; j < SERVICOS_ATIVOS + 1; j++)
+                        {
+                            if ((pc.id_servico == 0 && servicos[j].status_servico == 3) ||
+                                (pc.id_servico != 0 && servicos[j].id_servico == pc.id_servico && servicos[j].status_servico == 3))
+                            {
+                                sprintf(mensagem, "Serviço %d cancelado pelo cliente.", pc.id_servico == 0 ? servicos[j].id_servico : pc.id_servico);
+                                envia_msg_cliente(servicos[j].pid_cliente, mensagem);
+                                servicos[j].status_servico = 5;
+                            }
+                        }
                     }
                 }
             }
@@ -371,7 +455,9 @@ int main(int argc, char *argv[])
                             printf("\t- Estado do Serviço: %s \n", servicos[i].status_servico == 0 ? "Sem serviços agendados" : servicos[i].status_servico == 1 ? "Agendado"
                                                                                                                             : servicos[i].status_servico == 2   ? "Em Progresso"
                                                                                                                             : servicos[i].status_servico == 3   ? "Cancelado"
-                                                                                                                                                                : "Finalizado");
+                                                                                                                             : servicos[i].status_servico == 4   ? "Finalizado"
+                                                                                                                             : servicos[i].status_servico == 5   ? "Cancelado"
+                                                                                                                                                                : "Desconhecido");
                             printf("\t- ID Veículo Designado: %d\n", servicos[i].pid_veiculo);
                             printf("\t- Hora Agendada: %d\n", servicos[i].hora_agendada);
                             printf("\t- Origem: %s\n", servicos[i].local_origem);
@@ -407,11 +493,12 @@ int main(int argc, char *argv[])
                         {
 
                             printf("- Cliente: %s | PID: %d", clientes[i].username, clientes[i].pid_cliente);
-                            printf(" | Estado: %s \n", servicos[j].status_servico == 1   ? "Agendado"
-                                                       : servicos[j].status_servico == 2 ? "Em Progresso"
-                                                       : servicos[j].status_servico == 3 ? "Cancelado"
-                                                       : servicos[j].status_servico == 4 ? "Finalizado"
-                                                                                         : "Sem serviços agendados");
+                            printf(" | Estado: %s \n", servicos[i].status_servico == 0 ? "Sem serviços agendados" : servicos[i].status_servico == 1 ? "Agendado"
+                                                                                                                            : servicos[i].status_servico == 2   ? "Em Progresso"
+                                                                                                                            : servicos[i].status_servico == 3   ? "Cancelado"
+                                                                                                                             : servicos[i].status_servico == 4   ? "Finalizado"
+                                                                                                                             : servicos[i].status_servico == 5   ? "Cancelado"
+                                                                                                                                                                : "Desconhecido");
                         }
                     }
                 }
@@ -477,15 +564,16 @@ int main(int argc, char *argv[])
                     else
                     {
                         int conta_cancelado = 0;
+                        int id_unico_encontrado = 0;
                         for (int i = 1; i < SERVICOS_ATIVOS + 1; i++)
                         {
                             // Verifica se o serviço ja foi cancelado
-                            if (servicos[id].id_servico == id && servicos[i].status_servico == 3)
+                            if (servicos[i].id_servico == id && servicos[i].status_servico == 3)
                             {
                                 printf("[SERVIDOR] [INFO] >> Serviço %d ja foi cancelado.\n", id);
                             }
                             // Verifica se o seriço já foi finalizado
-                            else if (servicos[id].id_servico == id && servicos[i].status_servico == 4)
+                            else if (servicos[i].id_servico == id && servicos[i].status_servico == 4)
                             {
                                 printf("[SERVIDOR] [INFO] >> Serviço %d ja foi finalizado.\n", id);
                             }
@@ -500,17 +588,40 @@ int main(int argc, char *argv[])
                             {
                                 servicos[i].status_servico = 3;
                                 conta_cancelado++;
+                                id_unico_encontrado = i;
                                 printf("[SERVIDOR] [INFO] >> Serviço %d cancelado com sucesso.\n", id);
                             }
                         }
+
+                        char mensagem[512];
                         // Para id = 0, apresenta uma mensagem no final de todos os serviços cancelados
-                        if (conta_cancelado > 1)
+                        if (conta_cancelado == 1)
+                        {
+                            for (int j = 1; j < SERVICOS_ATIVOS + 1; j++)
+                            {
+                                if ((id == 0 && servicos[j].status_servico == 3) ||
+                                    (id != 0 && servicos[j].id_servico == id && servicos[j].status_servico == 3))
+                                {
+                                    sprintf(mensagem, "Serviço %d cancelado pelo administrador.", id == 0 ? servicos[j].id_servico : id);
+                                    envia_msg_cliente(servicos[j].pid_cliente, mensagem);
+                                    servicos[j].status_servico = 5;
+                                }
+                            }
+                        }
+                        else if (conta_cancelado > 1)
                         {
                             printf("[SERVIDOR] [INFO] >> %d serviços cancelados com sucesso.\n", conta_cancelado);
+                            for (int j = 1; j < SERVICOS_ATIVOS + 1; j++)
+                            {
+                                if ((id == 0 && servicos[j].status_servico == 3) ||
+                                    (id != 0 && servicos[j].id_servico == id && servicos[j].status_servico == 3))
+                                {
+                                    sprintf(mensagem, "Serviço %d cancelado pelo administrador.", id == 0 ? servicos[j].id_servico : id);
+                                    envia_msg_cliente(servicos[j].pid_cliente, mensagem);
+                                    servicos[j].status_servico = 5;
+                                }
+                            }
                         }
-
-                        // TODO: ENVIAR MENSAGEM AO CLIENTE AO INFORMAR QUE O SERVIÇO FOI CANCELADO PELO ADMINISTRADOR
-                        envia_msg_cliente(servicos[id].pid_cliente, "Serviço cancelado pelo administrador.\n");
                     }
                 }
             }

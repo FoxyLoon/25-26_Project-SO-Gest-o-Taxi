@@ -34,7 +34,7 @@
 // Definicoes
 #define NVEICULOS 10
 #define NCLIENTES 30
-#define NSERVICOS 3
+#define NSERVICOS 50
 
 // =====================================
 
@@ -76,7 +76,7 @@ typedef struct
     int id_servico;
     char username[TAM];
     int pid_cliente;
-    int status_servico; // 0 = Sem Agendamento | 1 = Agendado | 2 = Em Execução | 3 = Cancelado | 4 = Finalizado
+    int status_servico; // 0 = Sem Agendamento | 1 = Agendado | 2 = Em Execução | 3 = Cancelado (Quando Atualizado pra Cancelar) | 4 = Finalizado | 5 = Cancelado (Para não repetir info)
     int hora_agendada;  // Das 0h às 23h
     char local_origem[TAM];
     int distancia_pedida; // Valor Fixo da Distancia
