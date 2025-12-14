@@ -1,6 +1,8 @@
 #ifndef UTIL_H
 #define UTIL_H
 
+#include <sys/wait.h>
+
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -34,7 +36,7 @@
 // Definicoes
 #define NVEICULOS 10
 #define NCLIENTES 30
-#define NSERVICOS 3
+#define NSERVICOS 30
 
 // =====================================
 

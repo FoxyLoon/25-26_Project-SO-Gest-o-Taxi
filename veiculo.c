@@ -1,86 +1,95 @@
-// Simula funcionamente do veiculo automatico
-
 #include "util.h"
+
+volatile int servico_cancelado = 0;
+
+void tratar_cancelamento(int sig)
+{
+    servico_cancelado = 1;
+}
+
+void enviar_cliente(int fd_cliente, char *mensagem)
+{
+    if (fd_cliente != -1)
+    {
+        RESPOSTA_SERVER r;
+        strcpy(r.msg, mensagem);
+        write(fd_cliente, &r, sizeof(r));
+    }
+}
 
 int main(int argc, char *argv[])
 {
-    // ./veiculo nome distancia origem indice
-    int dist = atoi(argv[1]), indice = atoi(argv[4]);
-    char *orig = argv[3];
-
-    pthread_mutex_lock(&mutex);
-    servicos[indice].pid_veiculo = (int)getpid();
-    pthread_mutex_unlock(&mutex);
-
-    int dist_fata = dist;
-    int checkpoint = -1;
-
-    setbuf(stdout, NULL);
-
-    // Avisa cliente
-    char f[50];
-    sprintf(f, CLI_FIFO, servicos[indice].pid_cliente);
-    int fd = open(f, O_WRONLY);
-    if (fd != -1)
+    if (argc < 4)
     {
-        RESPOSTA_SERVER r;
-        sprintf(r.msg, "Veiculo chegou a %s. Toca a andar...", orig);
-        write(fd, &r, sizeof(r));
-        close(fd);
+        fprintf(stderr, "Uso: %s <distancia> <origem> <indice> <pid_cliente>\n", argv[0]);
+        exit(1);
     }
 
-    servicos[indice].status_servico = 2;
+    int distancia = atoi(argv[1]);
+    char *origem = argv[2];
+    int indice = atoi(argv[3]);
+    int pid_cliente = atoi(argv[4]);
 
-    fd = open(f, O_WRONLY);
+    // Sinal para cancelamento
+    signal(SIGUSR1, tratar_cancelamento);
 
-    if (fd != -1)
+    // Abre FIFO do cliente
+    char fifo_cli[30];
+    sprintf(fifo_cli, CLI_FIFO, pid_cliente);
+    int fd_cliente = open(fifo_cli, O_WRONLY);
+    
+    if (fd_cliente == -1)
     {
+        perror("Erro ao abrir FIFO do cliente");
+        exit(1);
+    }
 
-        while (dist_fata > 0)
+    // Notifica cliente que chegou
+    char msg[TAM];
+    sprintf(msg, "[VEÍCULO] Cheguei ao local de partida: %s", origem);
+    enviar_cliente(fd_cliente, msg);
+    
+    printf("[VEÍCULO %d] Iniciado - Origem: %s, Distância: %d km\n", 
+           getpid(), origem, distancia);
+
+    // Simula viagem (1 km por segundo)
+    int distancia_percorrida = 0;
+    int checkpoint = 0;
+
+    while (distancia_percorrida < distancia && servico_cancelado == 0)
+    {
+        sleep(1);
+        distancia_percorrida++;
+
+        // A cada 10% de progresso
+        int percentagem = (distancia_percorrida * 100) / distancia;
+        
+        if (percentagem / 10 > checkpoint / 10)
         {
-            sleep(1);
-            dist_fata--;
+            checkpoint = (percentagem / 10) * 10;
 
-            pthread_mutex_lock(&mutex);
-            km_total++;
-            pthread_mutex_unlock(&mutex);
-
-            int dist_percorida = dist - dist_fata;
-            int perc = (dist_percorida * 100) / dist;
-
-            if (perc / 10 > checkpoint / 10)
-            {
-                checkpoint = (perc / 10) * 10;
-
-                pthread_mutex_lock(&mutex);
-                servicos[indice].distancia_percorrida_percentagem = checkpoint;
-                pthread_mutex_unlock(&mutex);
-
-                printf("%d%%", servicos[indice].distancia_percorrida_percentagem);
-                fflush(stdout);
-
-                RESPOSTA_SERVER r;
-                sprintf(r.msg, "%d%%", servicos[indice].distancia_percorrida_percentagem);
-                write(fd, &r, sizeof(r));
-            }
+            sprintf(msg, "[VEÍCULO] Progresso: %d%%", checkpoint);
+            enviar_cliente(fd_cliente, msg);
+            
+/*             printf("%d%% ", checkpoint);
+ */            fflush(stdout);
         }
-
-        close(fd);
     }
 
-    pthread_mutex_lock(&mutex);
-    servicos[indice].status_servico = 4;
-    pthread_mutex_unlock(&mutex);
-
-    // Fim
-    fd = open(f, O_WRONLY);
-    if (fd != -1)
+    // Finaliza serviço
+    if (servico_cancelado)
     {
-        RESPOSTA_SERVER r;
-        strcpy(r.msg, "Chegou ao destino.");
-        write(fd, &r, sizeof(r));
-        close(fd);
+        sprintf(msg, "[VEÍCULO] Serviço cancelado pelo administrador");
+        enviar_cliente(fd_cliente, msg);
+        printf("\n[VEÍCULO %d] Serviço cancelado\n", getpid());
+    }
+    else
+    {
+        sprintf(msg, "[VEÍCULO] Serviço concluído - Chegou ao destino!");
+        enviar_cliente(fd_cliente, msg);
+        printf("\n[VEÍCULO %d] Serviço concluído\n", getpid());
     }
 
-    return 0;
+    close(fd_cliente);
+    exit(0);
 }
