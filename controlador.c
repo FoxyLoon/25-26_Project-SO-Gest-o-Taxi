@@ -52,7 +52,7 @@ void *tempo(void *arg)
 {
     while (servidor_ativo == 1)
     {
-        hora_simulada = hora_simulada + 1;
+        hora_simulada = (hora_simulada + 1) % 24;
         sleep(1);
     }
     return NULL;
@@ -62,15 +62,32 @@ void *tempo(void *arg)
 void *veiculo(void *arg)
 {
 
-    /* pthread_mutex_lock(tdt_srv->mut);
+    while (servidor_ativo)
+    {
+        pthread_mutex_lock(&mutex);
+        int i = 0;
+        if (servicos[i].status_servico == 1 && servicos[i].hora_agendada == hora_simulada)
+        {
+            char dist[16];
+            char idx[16];
+            snprintf(dist, sizeof(dist), "%d", servicos[i].distancia_pedida);
+            snprintf(idx, sizeof(idx), "%d", i);
 
-    pthread_mutex_unlock(tdt_srv->mut); */
+            // ./veiculo nome distancia origem indice
+            execl("./veiculo", "veiculo", dist, servicos[i].local_origem, idx, NULL);
+        }
 
-    //iniciar
-    //informar o cliente
-    //
-    
+        if (i < NSERVICOS - 1)
+        {
+            i++;
+        }
+        else
+        {
+            i = 0;
+        }
 
+        pthread_mutex_unlock(&mutex);
+    }
 }
 
 // Processo comandos do cliente
@@ -142,7 +159,7 @@ void *cliente(void *arg)
                 servicos[SERVICOS_ATIVOS].hora_agendada = pc.hora;
                 strcpy(servicos[SERVICOS_ATIVOS].local_origem, pc.origem);
                 servicos[SERVICOS_ATIVOS].distancia_pedida = pc.distancia;
-                
+
                 char msg[50];
                 sprintf(msg, "Serviço nº %d agendado!", servicos[SERVICOS_ATIVOS].id_servico);
                 envia_msg_cliente(pc.pid_cliente, msg);
