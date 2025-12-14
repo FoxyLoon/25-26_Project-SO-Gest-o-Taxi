@@ -52,8 +52,13 @@ void *tempo(void *arg)
 {
     while (servidor_ativo == 1)
     {
-        hora_simulada = (hora_simulada + 1) % 24;
         sleep(1);
+
+        pthread_mutex_lock(&mutex);
+        hora_simulada = (hora_simulada + 1) % 24;
+
+        pthread_cond_broadcast(&cond_hora);
+        pthread_mutex_unlock(&mutex);
     }
     return NULL;
 }
@@ -62,32 +67,38 @@ void *tempo(void *arg)
 void *veiculo(void *arg)
 {
 
+    int i = 0;
+
+    pthread_mutex_lock(&mutex);
+
     while (servidor_ativo)
     {
-        pthread_mutex_lock(&mutex);
-        int i = 0;
-        if (servicos[i].status_servico == 1 && servicos[i].hora_agendada == hora_simulada)
+        while (servidor_ativo &&
+               !(servicos[i].status_servico == 1 &&
+                 servicos[i].hora_agendada == hora_simulada))
         {
-            char dist[16];
-            char idx[16];
-            snprintf(dist, sizeof(dist), "%d", servicos[i].distancia_pedida);
-            snprintf(idx, sizeof(idx), "%d", i);
-
-            // ./veiculo nome distancia origem indice
-            execl("./veiculo", "veiculo", dist, servicos[i].local_origem, idx, NULL);
+            pthread_cond_wait(&cond_hora, &mutex);
         }
 
-        if (i < NSERVICOS - 1)
-        {
-            i++;
-        }
-        else
-        {
-            i = 0;
-        }
+        if (!servidor_ativo)
+            break;
+
+        char dist[16], idx[16];
+        snprintf(dist, sizeof(dist), "%d", servicos[i].distancia_pedida);
+        snprintf(idx, sizeof(idx), "%d", i);
 
         pthread_mutex_unlock(&mutex);
+
+        execl("./veiculo", "veiculo",
+              dist, servicos[i].local_origem, idx, NULL);
+
+        pthread_mutex_lock(&mutex);
+        i = (i + 1) % NSERVICOS;
     }
+
+    pthread_mutex_unlock(&mutex);
+
+    return NULL;
 }
 
 // Processo comandos do cliente
