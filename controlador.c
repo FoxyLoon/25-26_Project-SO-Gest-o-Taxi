@@ -52,8 +52,13 @@ void *tempo(void *arg)
 {
     while (servidor_ativo == 1)
     {
-        hora_simulada = (hora_simulada + 1) % 24;
         sleep(1);
+
+        pthread_mutex_lock(&mutex);
+        hora_simulada = (hora_simulada + 1) % 24;
+
+        pthread_cond_broadcast(&cond_hora);
+        pthread_mutex_unlock(&mutex);
     }
     return NULL;
 }
@@ -62,13 +67,38 @@ void *tempo(void *arg)
 void *veiculo(void *arg)
 {
 
-    /* pthread_mutex_lock(tdt_srv->mut);
+    int i = 0;
 
-    pthread_mutex_unlock(tdt_srv->mut); */
+    pthread_mutex_lock(&mutex);
 
-    // iniciar
-    // informar o cliente
-    //
+    while (servidor_ativo)
+    {
+        while (servidor_ativo &&
+               !(servicos[i].status_servico == 1 &&
+                 servicos[i].hora_agendada == hora_simulada))
+        {
+            pthread_cond_wait(&cond_hora, &mutex);
+        }
+
+        if (!servidor_ativo)
+            break;
+
+        char dist[16], idx[16];
+        snprintf(dist, sizeof(dist), "%d", servicos[i].distancia_pedida);
+        snprintf(idx, sizeof(idx), "%d", i);
+
+        pthread_mutex_unlock(&mutex);
+
+        execl("./veiculo", "veiculo",
+              dist, servicos[i].local_origem, idx, NULL);
+
+        pthread_mutex_lock(&mutex);
+        i = (i + 1) % NSERVICOS;
+    }
+
+    pthread_mutex_unlock(&mutex);
+
+    return NULL;
 }
 
 // Processo comandos do cliente
@@ -141,6 +171,7 @@ void *cliente(void *arg)
                 servicos[SERVICOS_ATIVOS].hora_agendada = pc.hora;
                 strcpy(servicos[SERVICOS_ATIVOS].local_origem, pc.origem);
                 servicos[SERVICOS_ATIVOS].distancia_pedida = pc.distancia;
+
 
                 char msg[50];
                 sprintf(msg, "Serviço nº %d agendado!", servicos[SERVICOS_ATIVOS].id_servico);

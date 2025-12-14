@@ -7,7 +7,10 @@ int main(int argc, char *argv[])
     // ./veiculo nome distancia origem indice
     int dist = atoi(argv[1]), indice = atoi(argv[4]);
     char *orig = argv[3];
-    int pid = (int)getpid();
+
+    pthread_mutex_lock(&mutex);
+    servicos[indice].pid_veiculo = (int)getpid();
+    pthread_mutex_unlock(&mutex);
 
     int dist_fata = dist;
     int checkpoint = -1;
@@ -16,7 +19,7 @@ int main(int argc, char *argv[])
 
     // Avisa cliente
     char f[50];
-    sprintf(f, CLI_FIFO, pid);
+    sprintf(f, CLI_FIFO, servicos[indice].pid_cliente);
     int fd = open(f, O_WRONLY);
     if (fd != -1)
     {
@@ -25,6 +28,8 @@ int main(int argc, char *argv[])
         write(fd, &r, sizeof(r));
         close(fd);
     }
+
+    servicos[indice].status_servico = 2;
 
     fd = open(f, O_WRONLY);
 
@@ -35,6 +40,11 @@ int main(int argc, char *argv[])
         {
             sleep(1);
             dist_fata--;
+
+            pthread_mutex_lock(&mutex);
+            km_total++;
+            pthread_mutex_unlock(&mutex);
+
             int dist_percorida = dist - dist_fata;
             int perc = (dist_percorida * 100) / dist;
 
@@ -42,7 +52,10 @@ int main(int argc, char *argv[])
             {
                 checkpoint = (perc / 10) * 10;
 
+                pthread_mutex_lock(&mutex);
                 servicos[indice].distancia_percorrida_percentagem = checkpoint;
+                pthread_mutex_unlock(&mutex);
+
                 printf("%d%%", servicos[indice].distancia_percorrida_percentagem);
                 fflush(stdout);
 
@@ -54,6 +67,10 @@ int main(int argc, char *argv[])
 
         close(fd);
     }
+
+    pthread_mutex_lock(&mutex);
+    servicos[indice].status_servico = 4;
+    pthread_mutex_unlock(&mutex);
 
     // Fim
     fd = open(f, O_WRONLY);

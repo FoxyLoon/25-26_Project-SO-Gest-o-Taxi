@@ -99,7 +99,8 @@ int servidor_ativo = 1;
 int CLIENTES_ATIVOS = 0;
 int SERVICOS_ATIVOS = 0;
 
-pthread_mutex_t mutex;
+pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t cond_hora = PTHREAD_COND_INITIALIZER;
 
 // =====================================
 
