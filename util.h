@@ -34,7 +34,7 @@
 // Definicoes
 #define NVEICULOS 10
 #define NCLIENTES 30
-#define NSERVICOS 50
+#define NSERVICOS 3
 
 // =====================================
 
@@ -59,7 +59,7 @@ typedef struct {
     int pid_cliente;
     char username[TAM];
     char comando[TAM_CMD];
-    int hora;
+    int hora; // Das 0h às 23h
     int id_servico;
     char origem[TAM];
     int distancia;
@@ -74,10 +74,11 @@ typedef struct {
     char username[TAM];
     int pid_cliente;
     int status_servico; // 0 = Sem Agendamento | 1 = Agendado | 2 = Em Execução | 3 = Cancelado | 4 = Finalizado
-    int pid_veiculo;
-    int hora_agendada;
+    int hora_agendada; // Das 0h às 23h
     char local_origem[TAM];
-    int distancia_percorrida_percentagem;
+    int distancia_pedida; // Valor Fixo da Distancia
+    int pid_veiculo;
+    int distancia_percorrida_percentagem; // 10% EM 10%
 } SERVICO;
 
 typedef struct {

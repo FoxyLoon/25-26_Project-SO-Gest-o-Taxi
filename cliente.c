@@ -11,30 +11,6 @@
 // Não pode cancelar quando veiculo chegar
 
 #include "util.h"
-
-void terminarCliente(int s)
-{
-    unlink(cli_fifo);
-
-    if (s == SIGUSR1)
-    {
-        printf("\n[SERVIDOR] >> O servidor encerrou!\n");
-    }
-    else if (s == SIGINT)
-    {
-        printf("\n\n[CLIENTE] >> O cliente encerrou forçadamente!\n");
-    }
-    else
-    {
-        printf("\n[CLIENTE] >> O cliente encerrou!\n");
-    }
-
-    printf("\n| ============================================ |\n");
-    printf("            [ O CLIENTE FOI ENCERRADO ]         \n");
-    printf("| ============================================ |\n");
-    exit(0);
-}
-
 // Está sempre à escuta de mensagens do servidor controlador
 void *recebe_msg_servidor(void *arg)
 {
@@ -58,6 +34,52 @@ void *recebe_msg_servidor(void *arg)
     return NULL;
 }
 
+/* void enviar_pedido_servidor(PEDIDO_CLIENTE pc)
+{
+    printf("Username: %s\n", pc.username);
+    printf("Comando: %s\n", pc.comando);
+    printf("PID: %d\n", pc.pid_cliente);
+    printf("hora: %d\n", pc.hora);
+    printf("origem: %s\n", pc.origem);
+    printf("distancia: %d\n", pc.distancia);
+    printf("id_servico: %d\n", pc.id_servico);
+    int fd_srv = open(SRV_FIFO, O_WRONLY);
+    if (fd_srv == -1)
+    {
+        printf("[CLIENTE] [ERRO] >> Erro ao abrir o fifo do controlador\n");
+        exit(1);
+    }
+    write(fd_srv, &pc, sizeof(PEDIDO_CLIENTE));
+    printf("[SERVIDOR] << [CLIENTE] << Enviei pedido '%s' ao controlador\n", pc.comando);
+    close(fd_srv);
+} */
+
+void terminarCliente(int s)
+{
+    unlink(cli_fifo);
+
+    if (s == SIGUSR1)
+    {
+        printf("\n[SERVIDOR] >> O servidor encerrou!\n");
+    }
+    else if (s == SIGINT)
+    {
+        /* PEDIDO_CLIENTE pc;
+        strcpy(pc.comando, "terminar");
+        pc.pid_cliente = getpid();
+        enviar_pedido_servidor(pc); */
+        printf("\n\n[CLIENTE] >> O cliente encerrou forçadamente!\n");
+    }
+    else
+    {
+        printf("\n[CLIENTE] >> O cliente encerrou!\n");
+    }
+
+    printf("\n| ============================================ |\n");
+    printf("            [ O CLIENTE FOI ENCERRADO ]         \n");
+    printf("| ============================================ |\n");
+    exit(0);
+}
 // =====================================
 
 void mostraComandos()
@@ -284,6 +306,11 @@ int main(int argc, char *argv[])
                     printf("[CLIENTE] [ERRO] >> Falta argumento: '<distancia>'!\n");
                     comando_valido = 0;
                 }
+                else if (arg_hora_id >= 0 && arg_hora_id < 24)
+                {
+                    printf("[CLIENTE] [ERRO] >> O argumento '<hora>' deve estar entre 0 e 23, pois correspondem à hora do dia.\n");
+                    comando_valido = 0;
+                }
                 else
                 {
                     strcpy(pc.comando, comando);
@@ -308,15 +335,22 @@ int main(int argc, char *argv[])
         // Envio do pedido ao controlador
         if (comando_valido == 1)
         {
-            fd_srv = open(SRV_FIFO, O_WRONLY);
+            int fd_srv = open(SRV_FIFO, O_WRONLY);
             if (fd_srv == -1)
             {
                 printf("[CLIENTE] [ERRO] >> Erro ao abrir o fifo do controlador\n");
                 exit(1);
             }
-            write(fd_srv, &pc, sizeof(PEDIDO_CLIENTE));
-            printf("[SERVIDOR] << [CLIENTE]\nEnviei pedido '%s' ao controlador\n", pc.comando);
+            if (write(fd_srv, &pc, sizeof(PEDIDO_CLIENTE)) == -1)
+            {
+                printf("[CLIENTE] [ERRO] >> Erro ao enviar o pedido ao controlador\n");
+            }
+            else
+            {
+                printf("[SERVIDOR] << [CLIENTE] << Enviei pedido '%s' ao controlador\n", pc.comando);
+            }
             close(fd_srv);
+            /* enviar_pedido_servidor(pc); */
         }
 
         // =====================================
