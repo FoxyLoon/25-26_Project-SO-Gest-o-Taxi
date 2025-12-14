@@ -50,9 +50,11 @@ void terminarServidor(int s)
 
 void *tempo(void *arg)
 {
-    // fazer com sleep
-    // lança thread para o veiculo (thread dentro de thread)
-    printf("Ola thread1\n");
+    while (servidor_ativo == 1)
+    {
+        hora_simulada = hora_simulada + 1;
+        sleep(1);
+    }
     return NULL;
 }
 
@@ -63,6 +65,12 @@ void *veiculo(void *arg)
     /* pthread_mutex_lock(tdt_srv->mut);
 
     pthread_mutex_unlock(tdt_srv->mut); */
+
+    //iniciar
+    //informar o cliente
+    //
+    
+
 }
 
 // Processo comandos do cliente
