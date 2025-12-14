@@ -34,26 +34,6 @@ void *recebe_msg_servidor(void *arg)
     return NULL;
 }
 
-/* void enviar_pedido_servidor(PEDIDO_CLIENTE pc)
-{
-    printf("Username: %s\n", pc.username);
-    printf("Comando: %s\n", pc.comando);
-    printf("PID: %d\n", pc.pid_cliente);
-    printf("hora: %d\n", pc.hora);
-    printf("origem: %s\n", pc.origem);
-    printf("distancia: %d\n", pc.distancia);
-    printf("id_servico: %d\n", pc.id_servico);
-    int fd_srv = open(SRV_FIFO, O_WRONLY);
-    if (fd_srv == -1)
-    {
-        printf("[CLIENTE] [ERRO] >> Erro ao abrir o fifo do controlador\n");
-        exit(1);
-    }
-    write(fd_srv, &pc, sizeof(PEDIDO_CLIENTE));
-    printf("[SERVIDOR] << [CLIENTE] << Enviei pedido '%s' ao controlador\n", pc.comando);
-    close(fd_srv);
-} */
-
 void terminarCliente(int s)
 {
     unlink(cli_fifo);
@@ -236,7 +216,7 @@ int main(int argc, char *argv[])
                 else
                 {
                     strcpy(pc.comando, comando);
-                    
+
                     comando_valido = 1;
                 }
             }
@@ -351,7 +331,6 @@ int main(int argc, char *argv[])
                 printf("[SERVIDOR] << [CLIENTE] << Enviei pedido '%s' ao controlador\n", pc.comando);
             }
             close(fd_srv);
-            /* enviar_pedido_servidor(pc); */
         }
 
         // =====================================

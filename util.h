@@ -49,13 +49,14 @@
 // =====================================
 
 // Estruturas
-typedef struct 
+typedef struct
 {
     char username[TAM];
     int pid_cliente;
 } CLIENTE;
 
-typedef struct {
+typedef struct
+{
     int pid_cliente;
     char username[TAM];
     char comando[TAM_CMD];
@@ -65,23 +66,26 @@ typedef struct {
     int distancia;
 } PEDIDO_CLIENTE;
 
-typedef struct {
+typedef struct
+{
     char msg[TAM];
 } RESPOSTA_SERVER;
 
-typedef struct {
+typedef struct
+{
     int id_servico;
     char username[TAM];
     int pid_cliente;
     int status_servico; // 0 = Sem Agendamento | 1 = Agendado | 2 = Em Execução | 3 = Cancelado | 4 = Finalizado
-    int hora_agendada; // Das 0h às 23h
+    int hora_agendada;  // Das 0h às 23h
     char local_origem[TAM];
     int distancia_pedida; // Valor Fixo da Distancia
     int pid_veiculo;
     int distancia_percorrida_percentagem; // 10% EM 10%
 } SERVICO;
 
-typedef struct {
+typedef struct
+{
     int fd;
     pthread_mutex_t *mut;
     int continua;
@@ -112,9 +116,11 @@ char cli_fifo[30];
 // 1 = Verdadeiro
 // 0 = Falso
 // Verifica se o char s é um número
-int isNumber(const char *s) {
+int isNumber(const char *s)
+{
     for (int i = 0; s[i]; i++)
-        if (!isdigit((unsigned char)s[i])) return 0;
+        if (!isdigit((unsigned char)s[i]))
+            return 0;
     return 1;
 }
 
