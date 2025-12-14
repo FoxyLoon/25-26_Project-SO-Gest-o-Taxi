@@ -61,7 +61,7 @@ void *tempo(void *arg)
 // serao 10 veiculos
 void *veiculo(void *arg)
 {
-    
+
     /* pthread_mutex_lock(tdt_srv->mut);
 
     pthread_mutex_unlock(tdt_srv->mut); */
@@ -77,19 +77,112 @@ void *veiculo(void *arg)
 void *cliente(void *arg)
 {
     int fd_srv = open(SRV_FIFO, O_RDWR);
+    if (fd_srv == -1)
+    {
+        printf("[SERVIDOR] Erro ao abrir o FIFO do servidor");
+        return NULL;
+    }
+
     PEDIDO_CLIENTE pc;
-    printf("[CLIENTE] [MSG] >> %s\n", pc.comando);
+    while (servidor_ativo)
+    {
+        ssize_t n = read(fd_srv, &pc, sizeof(pc));
+        if (n > 0)
+        {
+            pthread_mutex_lock(&mutex);
+            printf("[SERVIDOR] [COMANDO RECEBIDO]");
+            pthread_mutex_unlock(&mutex);
+
+            // Processar o comando recebido
+            if (!strcmp(pc.comando, "novo_cliente"))
+            {
+                if (CLIENTES_ATIVOS < NCLIENTES)
+                {
+                    strcpy(clientes[CLIENTES_ATIVOS].username, pc.username);
+                    clientes[CLIENTES_ATIVOS].pid_cliente = pc.pid_cliente;
+
+                    printf("\n[SERVIDOR] >> O cliente %s (PID %d) entrou.\n", clientes[CLIENTES_ATIVOS].username, clientes[CLIENTES_ATIVOS].pid_cliente);
+                    printf("[SERVIDOR] << ");
+                    CLIENTES_ATIVOS++;
+                    fflush(stdout);
+                    envia_msg_cliente(pc.pid_cliente, "Conectado com o servidor!");
+                }
+                else
+                {
+                    envia_msg_cliente(pc.pid_cliente, "O Servidor está cheio!");
+                    kill(pc.pid_cliente, SIGINT);
+                }
+            }
+            else if (!strcmp(pc.comando, "terminar"))
+            {
+                if (CLIENTES_ATIVOS > 0)
+                {
+                    int i;
+                    for (i = 0; i < CLIENTES_ATIVOS; i++)
+                    {
+                        if (clientes[i].pid_cliente == pc.pid_cliente)
+                        {
+                            clientes[i].pid_cliente = -1;
+                            strcpy(clientes[i].username, "Utilizador Excluido");
+                            CLIENTES_ATIVOS--;
+                            printf("\n[SERVIDOR] >> O cliente %s (PID %d) saiu.\n", pc.username, pc.pid_cliente);
+                            printf("[SERVIDOR] << ");
+                            fflush(stdout);
+                            break;
+                        }
+                    }
+                }
+            }
+            else if (!strcmp(pc.comando, "agendar"))
+            {
+                servicos[SERVICOS_ATIVOS].id_servico = SERVICOS_ATIVOS;
+                strcpy(servicos[SERVICOS_ATIVOS].username, pc.username);
+                servicos[SERVICOS_ATIVOS].pid_cliente = pc.pid_cliente;
+                servicos[SERVICOS_ATIVOS].status_servico = 1;
+                servicos[SERVICOS_ATIVOS].hora_agendada = pc.hora;
+                strcpy(servicos[SERVICOS_ATIVOS].local_origem, pc.origem);
+                servicos[SERVICOS_ATIVOS].distancia_pedida = pc.distancia;
+                
+                char msg[50];
+                sprintf(msg, "Serviço nº %d agendado!", servicos[SERVICOS_ATIVOS].id_servico);
+                envia_msg_cliente(pc.pid_cliente, msg);
+
+                SERVICOS_ATIVOS++;
+            }
+            else
+            {
+                printf("[SERVIDOR] >> Comando desconhecido: %s\n", pc.comando);
+            }
+        }
+        else
+        {
+            perror("[SERVIDOR] Erro ao ler do FIFO");
+        }
+    }
+
+    close(fd_srv);
+    return NULL;
+}
+
+/* void *cliente(void *arg)
+{
+    int fd_srv = open(SRV_FIFO, O_RDWR);
+    PEDIDO_CLIENTE pc;
+
     while ((read(fd_srv, &pc, sizeof(pc)) > 0) && servidor_ativo == 1)
     {
-        pthread_mutex_lock(&mutex);
+        pthread_mutex_unlock(&mutex);
+        printf("[SERVIDOR] [RECEBIDO] Comando: %s | Cliente PID: %d\n", pc.comando, pc.pid_cliente);
+        pthread_mutex_unlock(&mutex);
+
         if (!strcmp(pc.comando, "novo_cliente"))
         {
             if (CLIENTES_ATIVOS < NCLIENTES)
             {
                 strcpy(clientes[CLIENTES_ATIVOS].username, pc.username);
                 clientes[CLIENTES_ATIVOS].pid_cliente = pc.pid_cliente;
-                
-                printf("[SERVIDOR] >> O utilizador %s (PID %d) entrou.\n", clientes[CLIENTES_ATIVOS].username, clientes[CLIENTES_ATIVOS].pid_cliente);
+
+                printf("\n[SERVIDOR] >> O cliente %s (PID %d) entrou.\n", clientes[CLIENTES_ATIVOS].username, clientes[CLIENTES_ATIVOS].pid_cliente);
                 printf("[SERVIDOR] << ");
                 CLIENTES_ATIVOS++;
                 fflush(stdout);
@@ -112,19 +205,20 @@ void *cliente(void *arg)
                     {
                         clientes[i].pid_cliente = 0;
                         CLIENTES_ATIVOS--;
-                        printf("[SERVIDOR] >> O utilizador %s (PID %d) saiu.\n", pc.username, pc.pid_cliente);
+                        printf("\n[SERVIDOR] >> O cliente %s (PID %d) saiu.\n", pc.username, pc.pid_cliente);
                         printf("[SERVIDOR] << ");
                         fflush(stdout);
                         break;
                     }
                 }
             }
-            else
-            {
-                envia_msg_cliente(pc.pid_cliente, "O Servidor n o tem mais clientes conectados.");
-            }
         }
-        pthread_mutex_unlock(&mutex);
+        else if (!strcmp(pc.comando, "consultar"))
+        {
+            sleep(1);
+            printf("consultar recebido!\n");
+            envia_msg_cliente(pc.pid_cliente, "Sem serviços.");
+        }
     }
 
     if (servidor_ativo != 1)
@@ -132,7 +226,7 @@ void *cliente(void *arg)
         close(fd_srv);
     }
     return NULL;
-}
+} */
 
 // Processa comandos do administrador
 void *administrador(void *arg)
@@ -200,9 +294,10 @@ int main(int argc, char *argv[])
     printf("\n| ============================================ |\n");
     printf("            [ O SERVIDOR FOI INICIADO ]         \n");
     printf("| ============================================ |\n");
-    printf("\n| ===== Bem-vindo, Administrador (PID %d) ===== |\n", getpid());
 
-    mostraComandosServidor();
+    printf("\n- Bem-vindo, Administrador (PID %d)\n", pc.pid_cliente);
+    printf("- Dica: use o comando 'ajuda'\n\n");
+
     printf("[SERVIDOR] << ");
 
     // =====================================
@@ -230,6 +325,7 @@ int main(int argc, char *argv[])
         if (arg_num > 0)
         {
             if (!strcmp(comando, "ajuda"))
+            {
                 if (arg_num > 1 || strcmp(comando, buffer))
                 {
                     int number = strcmp(comando, buffer);
@@ -240,6 +336,18 @@ int main(int argc, char *argv[])
                     mostraComandosServidor();
                     printf("[SERVIDOR] << ");
                 }
+            }
+
+            else if (!strcmp(comando, "estr_pc"))
+            {
+                printf("pid_cliente: %d\n", pc.pid_cliente);
+                printf("username: %s\n", pc.username);
+                printf("comando: %s\n", pc.comando);
+                printf("hora: %d\n", pc.hora);
+                printf("id_servico: %d\n", pc.id_servico);
+                printf("origem: %s\n", pc.origem);
+                printf("distancia: %d\n", pc.distancia);
+            }
 
             // =====================================
 
@@ -269,7 +377,7 @@ int main(int argc, char *argv[])
                 else
                 {
                     printf("[SERVIDOR] >> A listar todos os serviços agendados...\n");
-                    sleep(2);
+                    sleep(1);
                     if (SERVICOS_ATIVOS == 0)
                     {
 
@@ -291,7 +399,7 @@ int main(int argc, char *argv[])
                             printf("|- ID Veículo Designado: %d\n", servicos[i].pid_veiculo);
                             printf("|- Hora Agendada: %d\n", servicos[i].hora_agendada);
                             printf("|- Origem: %s\n", servicos[i].local_origem);
-                            printf("|- Distância percorrida: %d %%\n", servicos[i].distancia_percorrida_percentagem);
+                            printf("|- Distância pedida: %d km\n", servicos[i].distancia_pedida);
                             printf("|===================================================================\n\n");
                         }
                     }
@@ -310,7 +418,7 @@ int main(int argc, char *argv[])
                 else
                 {
                     printf("[SERVIDOR] >> A listar todos os clientes ativos...\n");
-                    sleep(2);
+                    sleep(1);
                     if (CLIENTES_ATIVOS <= 0)
                     {
                         printf("[SERVIDOR] [INFO] >> Não existem clientes ativos.\n");
@@ -322,7 +430,6 @@ int main(int argc, char *argv[])
                         for (int i = 0; i < CLIENTES_ATIVOS; i++)
                         {
 
-                            
                             printf("- Cliente: %s | PID: %d", clientes[i].username, clientes[i].pid_cliente);
                             printf(" | Estado: %s \n", servicos[i].status_servico == 1   ? "Agendado"
                                                        : servicos[i].status_servico == 2 ? "Em Progresso"
