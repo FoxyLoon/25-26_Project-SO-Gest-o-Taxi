@@ -4,9 +4,10 @@
 
 int main(int argc, char *argv[])
 {
-
-    int dist = atoi(argv[1]), pid = atoi(argv[2]), indice = atoi(argv[5]);
-    char *orig = argv[4];
+    // ./veiculo nome distancia origem indice
+    int dist = atoi(argv[1]), indice = atoi(argv[4]);
+    char *orig = argv[3];
+    int pid = (int)getpid();
 
     int dist_fata = dist;
     int checkpoint = -1;
