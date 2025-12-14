@@ -52,7 +52,7 @@ void *tempo(void *arg)
 {
     while (servidor_ativo == 1)
     {
-        hora_simulada = hora_simulada + 1;
+        hora_simulada = (hora_simulada + 1) % 24;
         sleep(1);
     }
     return NULL;
@@ -164,79 +164,6 @@ void *cliente(void *arg)
     return NULL;
 }
 
-/* void *cliente(void *arg)
-{
-    int fd_srv = open(SRV_FIFO, O_RDWR);
-    PEDIDO_CLIENTE pc;
-
-    while ((read(fd_srv, &pc, sizeof(pc)) > 0) && servidor_ativo == 1)
-    {
-        pthread_mutex_unlock(&mutex);
-        printf("[SERVIDOR] [RECEBIDO] Comando: %s | Cliente PID: %d\n", pc.comando, pc.pid_cliente);
-        pthread_mutex_unlock(&mutex);
-
-        if (!strcmp(pc.comando, "novo_cliente"))
-        {
-            if (CLIENTES_ATIVOS < NCLIENTES)
-            {
-                strcpy(clientes[CLIENTES_ATIVOS].username, pc.username);
-                clientes[CLIENTES_ATIVOS].pid_cliente = pc.pid_cliente;
-
-                printf("\n[SERVIDOR] >> O cliente %s (PID %d) entrou.\n", clientes[CLIENTES_ATIVOS].username, clientes[CLIENTES_ATIVOS].pid_cliente);
-                printf("[SERVIDOR] << ");
-                CLIENTES_ATIVOS++;
-                fflush(stdout);
-                envia_msg_cliente(pc.pid_cliente, "Conectado com o servidor!");
-            }
-            else
-            {
-                envia_msg_cliente(pc.pid_cliente, "O Servidor está cheio!");
-                kill(pc.pid_cliente, SIGINT);
-            }
-        }
-        else if (!strcmp(pc.comando, "terminar"))
-        {
-            if (CLIENTES_ATIVOS > 0)
-            {
-                int i;
-                for (i = 0; i < CLIENTES_ATIVOS; i++)
-                {
-                    if (clientes[i].pid_cliente == pc.pid_cliente)
-                    {
-                        clientes[i].pid_cliente = 0;
-                        CLIENTES_ATIVOS--;
-                        printf("\n[SERVIDOR] >> O cliente %s (PID %d) saiu.\n", pc.username, pc.pid_cliente);
-                        printf("[SERVIDOR] << ");
-                        fflush(stdout);
-                        break;
-                    }
-                }
-            }
-        }
-        else if (!strcmp(pc.comando, "consultar"))
-        {
-            sleep(1);
-            printf("consultar recebido!\n");
-            envia_msg_cliente(pc.pid_cliente, "Sem serviços.");
-        }
-    }
-
-    if (servidor_ativo != 1)
-    {
-        close(fd_srv);
-    }
-    return NULL;
-} */
-
-// Processa comandos do administrador
-void *administrador(void *arg)
-{
-    /* pthread_mutex_lock(tdt_srv->mut);
-
-    pthread_mutex_unlock(tdt_srv->mut); */
-    return NULL;
-}
-
 void mostraComandosServidor()
 {
     printf("_________________________________________________________________________________________\n");
@@ -283,10 +210,9 @@ int main(int argc, char *argv[])
     // =====================================
     pthread_mutex_init(&mutex, NULL);
 
-    pthread_t thread_1, thread_2, thread_3;
+    pthread_t thread_1, thread_2;
     pthread_create(&thread_1, 0, tempo, 0);
     pthread_create(&thread_2, 0, cliente, 0);
-    pthread_create(&thread_3, 0, administrador, 0);
 
     // =====================================
 
