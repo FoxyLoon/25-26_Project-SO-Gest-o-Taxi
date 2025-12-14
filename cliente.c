@@ -236,6 +236,7 @@ int main(int argc, char *argv[])
                 else
                 {
                     strcpy(pc.comando, comando);
+                    
                     comando_valido = 1;
                 }
             }
